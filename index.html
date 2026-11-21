@@ -1,0 +1,2246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tech Stock</title>
+<meta name="description" content="Home electronics inventory: network gear, PoE cameras and NVRs, computers, consoles, video games and A/V, with barcode and serial scanning, IP and PoE tracking, warranties and loans.">
+<meta name="theme-color" content="#eef1f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d1117" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tech Stock">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: one-column phone app. Sticky header, filter chips, device rows, fixed bottom tabs. Feel: server-closet slate, signal teal, LED-green asset tags, monospace for addresses. */
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --sunk:#e1e6eb; --line:#cdd5dd;
+  --ink:#111820; --muted:#56616d;
+  --accent:#0a6c74; --accent-ink:#ffffff; --accent-soft:#d3ecee;
+  --ok:#1f7a4a; --ok-soft:#d6efe1; --loan:#2b5fa8; --loan-soft:#dbe5f6;
+  --warn:#8f5b00; --warn-soft:#f7e7c6; --bad:#b0302a; --bad-soft:#f6d9d6;
+  --tag:#9be15d; --tag-ink:#0f2400; --sugg:#effbd8; --spare:#5d6b7a; --spare-soft:#e3e8ee;
+  --rack:#1d242c; --rail:#4a5662; --wood:#9a7350; --led:#36d27a;
+  --display:"IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d1117; --surface:#161b22; --sunk:#1f2630; --line:#2d3743;
+  --ink:#e6edf3; --muted:#8d99a6;
+  --accent:#3fc1c9; --accent-ink:#04262a; --accent-soft:#0f3438;
+  --ok:#5fd394; --ok-soft:#123323; --loan:#86aef0; --loan-soft:#1b2940;
+  --warn:#f0b04e; --warn-soft:#382a12; --bad:#f2847a; --bad-soft:#3d1d1a;
+  --tag:#9be15d; --tag-ink:#0f2400; --sugg:#1f2c12; --spare:#a3b0bd; --spare-soft:#26303b;
+  --rack:#0a0e12; --rail:#3a4550; --wood:#6e5139; --led:#36d27a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d1117; --surface:#161b22; --sunk:#1f2630; --line:#2d3743;
+  --ink:#e6edf3; --muted:#8d99a6;
+  --accent:#3fc1c9; --accent-ink:#04262a; --accent-soft:#0f3438;
+  --ok:#5fd394; --ok-soft:#123323; --loan:#86aef0; --loan-soft:#1b2940;
+  --warn:#f0b04e; --warn-soft:#382a12; --bad:#f2847a; --bad-soft:#3d1d1a;
+  --tag:#9be15d; --tag-ink:#0f2400; --sugg:#1f2c12; --spare:#a3b0bd; --spare-soft:#26303b;
+  --rack:#0a0e12; --rail:#3a4550; --wood:#6e5139; --led:#36d27a; color-scheme:dark}
+
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);color-scheme:light}
+html,body{min-height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+img{max-width:100%}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:680px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 calc(96px + env(safe-area-inset-bottom,0px))}
+
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:14px 10px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+h1{font-family:var(--display);font-weight:700;font-size:28px;letter-spacing:.03em;margin:0;line-height:.95;text-transform:uppercase}
+h1 .led{display:inline-block;width:10px;height:10px;margin-right:9px;vertical-align:4px;border-radius:50%;background:var(--led);box-shadow:0 0 0 3px color-mix(in srgb,var(--led) 22%,transparent),0 0 10px var(--led)}
+h1 small{display:block;font-family:var(--mono);font-size:11px;font-weight:400;letter-spacing:.06em;color:var(--muted);text-transform:none;margin-top:5px}
+h2{font-family:var(--display);font-weight:700;font-size:22px;margin:6px 0 4px;line-height:1.1;text-wrap:balance}
+h3{font-family:var(--display);font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:18px 0 4px}
+.lede{color:var(--muted);margin:0 0 14px;max-width:62ch}
+.iconbtn{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center}
+.iconbtn svg{width:20px;height:20px;stroke:var(--ink);fill:none;stroke-width:1.8}
+
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:4px 0 14px}
+.summary button{border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:9px 8px 8px;text-align:left;min-width:0}
+.summary b{display:block;font-family:var(--display);font-weight:700;font-size:26px;line-height:1;font-variant-numeric:tabular-nums}
+.summary span{display:block;font-size:12px;color:var(--muted);line-height:1.2;margin-top:3px}
+.summary .t-out b{color:var(--loan)} .summary .t-attn b{color:var(--bad)} .summary .t-low b{color:var(--warn)}
+.summary button[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+
+.search{display:flex;gap:8px;margin-bottom:10px}
+input[type=text],input[type=number],input[type=search],input[type=date],input[type=url],input[type=password],select,textarea{width:100%;min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px}
+textarea{min-height:64px;resize:vertical}
+.chips{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;margin:0 0 8px;padding-bottom:4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:transparent;border-radius:99px;padding:5px 12px;font-size:13px;white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chips.cats .chip{font-size:12px;padding:4px 10px}
+.answer{font-size:13px;color:var(--muted);margin:2px 0 8px}
+.answer b{color:var(--ink)}
+
+.shelf{display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.item{display:grid;grid-template-columns:60px 1fr auto;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);align-items:center}
+.item .main{min-width:0;border:0;background:none;padding:0;text-align:left}
+.catrow{display:flex;gap:10px;align-items:center}
+.catrow .chips{flex:1;min-width:0;margin-bottom:0}
+.catrow{margin-bottom:8px}
+.viewtoggle{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden;flex:none}
+.viewtoggle button{border:0;background:var(--surface);padding:0 12px;font-size:13px;font-weight:600;color:var(--muted);min-height:34px}
+.viewtoggle button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.shelf.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px;border-top:0}
+.tile{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:0;overflow:hidden;text-align:left;display:flex;flex-direction:column;min-width:0;position:relative}
+.tile .pic{aspect-ratio:1;width:100%;max-width:100%;background:var(--sunk);display:grid;place-items:center;overflow:hidden}
+.tile .pic img{width:100%;height:100%;object-fit:cover}
+.tile .pic span{font-family:var(--display);font-weight:700;font-size:28px;color:var(--muted)}
+.tile.gone .pic img,.tile.gone .pic span{opacity:.45;filter:grayscale(1)}
+.tile .tn{padding:6px 8px 2px;font-size:13px;font-weight:600;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:2.4em}
+.tile .ta{padding:0 8px 8px;font-size:12px;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.tile .tb{position:absolute;top:6px;left:6px;right:6px}
+.tile .tb .pill{font-size:10px;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.gallery{position:fixed;inset:0;z-index:25;background:var(--bg);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.gbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px))}
+.gbar .count{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.gtrack{flex:1;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
+.gtrack::-webkit-scrollbar{display:none}
+.slide{flex:0 0 100%;scroll-snap-align:center;scroll-snap-stop:always;display:flex;flex-direction:column;gap:10px;padding:0 max(16px,env(safe-area-inset-right,0px)) 16px max(16px,env(safe-area-inset-left,0px));min-width:0;overflow-y:auto}
+.slide .big{flex:1;min-height:200px;max-height:62vh;background:var(--sunk);border-radius:14px;display:grid;place-items:center;overflow:hidden}
+.slide .big img{width:100%;height:100%;object-fit:contain}
+.slide .big span{font-family:var(--display);font-weight:700;font-size:64px;color:var(--muted)}
+.slide h2{margin:0}
+.gnav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:99px;border:1px solid var(--line);background:var(--surface);font-size:22px;display:none;place-items:center;z-index:2}
+@media (hover:hover) and (min-width:640px){.gnav{display:grid}}
+.gnav.prev{left:12px}.gnav.next{right:12px}
+.item.flash{animation:flash 1.6s ease-out}
+@keyframes flash{0%,40%{background:var(--accent-soft)}100%{background:transparent}}
+.thumb{width:60px;height:60px;border-radius:8px;object-fit:cover;background:var(--sunk);display:grid;place-items:center;font-family:var(--mono);font-size:11px;color:var(--muted);overflow:hidden}
+.name{font-weight:600;overflow-wrap:anywhere;line-height:1.25}
+.meta{font-size:12px;color:var(--muted);display:flex;gap:2px 8px;flex-wrap:wrap;margin-top:2px}
+.meta span{min-width:0;overflow-wrap:anywhere}
+.mono{font-family:var(--mono);font-size:12px;letter-spacing:.02em}
+.right{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap}
+.pill.available{background:var(--ok-soft);color:var(--ok)}
+.pill.loaned,.pill.away{background:var(--loan-soft);color:var(--loan)}
+.pill.repair,.pill.low{background:var(--warn-soft);color:var(--warn)}
+.pill.missing,.pill.overdue{background:var(--bad-soft);color:var(--bad)}
+.pill.ex{background:var(--sunk);color:var(--muted)}
+.pill.spare,.pill.retired{background:var(--spare-soft);color:var(--spare)}
+.pill.net{background:var(--accent-soft);color:var(--accent)}
+.qtyx{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.qty{display:flex;align-items:center;gap:4px}
+.qty .amt{min-width:46px;text-align:center;font-family:var(--display);font-weight:700;font-size:18px;font-variant-numeric:tabular-nums;line-height:1}
+.qty .amt small{display:block;font-family:var(--body);font-weight:400;font-size:11px;color:var(--muted)}
+.qty .amt.low{color:var(--warn)}
+.step{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--surface);font-size:18px;line-height:1;display:grid;place-items:center}
+.link{border:0;background:none;padding:0;color:var(--accent);font-weight:600;font-size:13px}
+
+.empty{padding:26px 2px;color:var(--muted)}
+.btn{border:0;border-radius:10px;padding:11px 16px;font-weight:600;background:var(--accent);color:var(--accent-ink);display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn.ghost{background:var(--sunk);color:var(--ink)}
+.btn.danger{background:var(--bad-soft);color:var(--bad)}
+.btn.sm{padding:7px 12px;font-size:13px}
+.btn:disabled{opacity:.55;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row.end{justify-content:flex-end}
+.row.between{justify-content:space-between}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:14px}
+.tag{display:inline-block;background:var(--tag);color:var(--tag-ink);font-family:var(--mono);font-size:12px;font-weight:500;padding:2px 8px;border-radius:3px;letter-spacing:.04em}
+.status{font-size:13px;color:var(--muted);min-height:1.4em;margin-bottom:8px}
+.hint{font-size:12px;color:var(--muted)}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form .full{grid-column:1/-1}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:9px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+
+.viewer{position:relative;width:100%;max-width:100%;aspect-ratio:4/3;background:#0b0d0f;border-radius:var(--r);overflow:hidden;margin-bottom:12px;display:grid;place-items:center}
+.viewer video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0}
+.viewer .aim{position:absolute;left:12%;right:12%;top:30%;bottom:30%;border:2px solid var(--tag);border-radius:10px;box-shadow:0 0 0 999px rgba(0,0,0,.35);opacity:0}
+.viewer.live video,.viewer.live .aim{opacity:1}
+.viewer #camBtn{position:relative;z-index:2}
+.viewer .camstop{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:2;background:rgba(0,0,0,.6);color:#fff}
+.fillbar{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fillbar .btn{padding:13px 10px;font-size:15px}
+.form .fillbar label.btn{flex-direction:row;color:var(--ink)}
+.fillbar .btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;flex:none}
+.form label.sugg,.seg.sugg{position:relative}
+.form label.sugg input,.form label.sugg select{background:var(--sugg);border-color:var(--tag);box-shadow:0 0 0 1px var(--tag)}
+.seg.sugg{box-shadow:0 0 0 2px var(--tag)}
+.ignore{position:absolute;top:-1px;right:0;border:0;background:none;padding:0 2px;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer}
+.seg.sugg .ignore{top:-20px}
+.suggbar{background:var(--sugg);border:1px solid var(--tag);border-radius:10px;padding:10px 12px;font-size:13px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;color:var(--ink)}
+.suggbar .grow{flex:1 1 200px}
+.viewer.live #camBtn{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.6);color:#fff}
+.viewer .camnote{position:absolute;top:12px;left:12px;right:12px;text-align:center;color:#c9d0d6;font-size:13px}
+.viewer.live .camnote{display:none}
+.camtools{position:absolute;top:10px;right:10px;display:flex;gap:6px;z-index:2}
+.viewer:not(.live) .camtools{display:none}
+.camtool{border:0;border-radius:99px;padding:7px 14px;background:rgba(0,0,0,.6);color:#fff;font-size:13px;font-weight:600}
+.camtool[aria-pressed="true"]{background:var(--tag);color:var(--tag-ink)}
+
+.ihead{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;margin-bottom:10px}
+.ihead img,.ihead .thumb{width:84px;height:84px;border-radius:10px;object-fit:cover}
+.ihead .main{min-width:0}
+.facts{display:grid;grid-template-columns:max-content 1fr;gap:6px 14px;margin:6px 0 14px;font-size:14px}
+.facts dt{color:var(--muted);font-size:12px;padding-top:2px}
+.facts dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.actions .full{grid-column:1/-1}
+.minor{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:14px}
+.inbtn{display:flex;gap:6px}
+.inbtn input{flex:1}
+.inbtn .btn{flex:none;padding:8px 10px;font-size:13px}
+details.netbox{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:0 12px}
+details.netbox summary{cursor:pointer;padding:11px 0;font-weight:600;font-size:14px;color:var(--ink)}
+details.netbox[open] summary{border-bottom:1px solid var(--line);margin-bottom:10px}
+details.netbox .form{padding-bottom:12px}
+.netsec{margin-bottom:18px}
+.netsec h3{margin-top:0}
+.issue{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:start;padding:9px 12px;border-radius:10px;background:var(--bad-soft);color:var(--ink);margin-bottom:6px;font-size:14px;border:0;width:100%;text-align:left}
+.issue.warn{background:var(--warn-soft)}
+.issue i{font-style:normal;font-weight:700;color:var(--bad)} .issue.warn i{color:var(--warn)}
+.tree{border-top:1px solid var(--line)}
+.node{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);width:100%;border-left:0;border-right:0;border-top:0;background:none;text-align:left}
+.node .nm{min-width:0;display:flex;align-items:center;gap:8px}
+.node .nm b{font-weight:600;overflow-wrap:anywhere}
+.node .branch{font-family:var(--mono);color:var(--muted);white-space:pre;font-size:12px;flex:none}
+.node .addr{font-family:var(--mono);font-size:12px;color:var(--muted);text-align:right;white-space:nowrap}
+.meter{height:8px;border-radius:4px;background:var(--sunk);overflow:hidden;margin:6px 0 4px}
+.meter i{display:block;height:100%;background:var(--ok);border-radius:4px}
+.meter.warn i{background:var(--warn)} .meter.bad i{background:var(--bad)}
+.budget{border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:10px 12px;margin-bottom:8px}
+.budget .bh{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap}
+.budget .bh button{border:0;background:none;padding:0;font-weight:600;text-align:left;color:var(--ink)}
+.chans{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px;margin-top:8px}
+.chan{border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px;background:var(--bg);text-align:left;min-width:0}
+.chan b{font-family:var(--mono);font-weight:600;margin-right:4px}
+.chan.free{color:var(--muted);border-style:dashed}
+.chan.clash{border-color:var(--bad);background:var(--bad-soft)}
+.iptable{width:100%;border-collapse:collapse;font-size:13px}
+.iptable th{text-align:left;font-weight:600;color:var(--muted);font-size:12px;padding:6px 8px 6px 0;border-bottom:1px solid var(--line)}
+.iptable td{padding:7px 8px 7px 0;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}
+.iptable td.m{font-family:var(--mono);font-size:12px;white-space:nowrap}
+.iptable tr.bad td{background:var(--bad-soft)}
+.iptable button{border:0;background:none;padding:0;color:var(--ink);font-weight:600;text-align:left}
+.tablewrap{overflow-x:auto}
+
+.loc{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);width:100%;border-left:0;border-right:0;border-top:0;background:none;text-align:left}
+.loc .count{font-family:var(--display);font-weight:700;font-size:20px;font-variant-numeric:tabular-nums}
+.loc .count small{font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted);margin-left:3px}
+
+.out{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.out .main{min-width:0;border:0;background:none;padding:0;text-align:left}
+
+.store{font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.07em;font-size:14px;color:var(--muted);margin:16px 0 2px}
+.li{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.li .main{min-width:0}
+input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent);margin:0}
+.checks{display:flex;flex-direction:column}
+.checks label{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:max(6px,env(safe-area-inset-left,0px));padding-right:max(6px,env(safe-area-inset-right,0px))}
+nav.tabs .in{max-width:680px;margin:0 auto;display:grid;grid-template-columns:repeat(6,1fr)}
+nav.tabs button{border:0;background:none;padding:9px 0 8px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11.5px;min-width:0;color:var(--muted);position:relative}
+nav.tabs button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+nav.tabs button[aria-current="page"]{color:var(--accent);font-weight:600}
+.badge{position:absolute;top:4px;left:calc(50% + 6px);background:var(--accent);color:var(--accent-ink);font-size:10px;font-weight:700;border-radius:99px;padding:0 5px;min-width:16px;text-align:center}
+
+.sheet{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}
+.sheet .card{background:var(--bg);width:100%;max-width:680px;max-height:92%;overflow:auto;border-radius:16px 16px 0 0;padding:18px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:30;background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:99px;font-size:14px;max-width:calc(100% - 32px)}
+@media (prefers-reduced-motion:no-preference){.sheet .card{animation:up .18s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}}}
+
+/* Photo buttons */
+.thumbbtn{width:60px;height:60px;padding:0;border:0;background:none;border-radius:8px;overflow:hidden;display:block}
+.thumbbtn.add{border:1.5px dashed var(--line);background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--muted);font-size:11px;font-weight:600}
+.thumbbtn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8}
+.ihead .thumbbtn{width:84px;height:84px;border-radius:10px}
+.ihead .thumbbtn .thumb{width:84px;height:84px}
+.bigphoto{display:block;width:100%;max-height:62vh;object-fit:contain;border-radius:10px;background:var(--sunk);margin:8px 0 14px}
+
+/* Rooms view */
+.mapbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 0 8px;flex-wrap:wrap}
+.roomgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:12px}
+.wallnote{text-align:center;color:var(--muted);font-size:13px;padding:20px;border:1px dashed var(--line);border-radius:12px}
+.zone{position:relative;border-radius:10px;padding:34px 10px 12px;min-height:130px;min-width:0;background:var(--surface);border:1px solid var(--line)}
+.zlabel{position:absolute;top:8px;left:8px;max-width:calc(100% - 16px);background:var(--tag);color:var(--tag-ink);font-family:var(--mono);font-size:11px;font-weight:600;border:0;border-radius:3px;padding:2px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.zlabel span{opacity:.65;margin-left:4px}
+.zkind{position:absolute;top:10px;right:10px;font-size:11px;color:var(--muted)}
+.ztiles{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.zempty{font-size:12px;color:var(--muted)}
+.k-rack{background:var(--rack);border:0;border-left:10px solid var(--rail);border-right:10px solid var(--rail);background-image:repeating-linear-gradient(to bottom,transparent 0 40px,rgba(255,255,255,.06) 40px 42px)}
+.k-rack .zkind{color:#9aa6b2}
+.k-rack .zempty{color:#9aa6b2}
+.k-media{border:0;border-bottom:14px solid var(--wood);border-radius:10px 10px 4px 4px}
+.k-shelf{background-image:repeating-linear-gradient(to bottom,transparent 0 84px,var(--line) 84px 88px);background-position:0 30px}
+.k-desk{border:0;border-bottom:12px solid var(--wood);border-radius:10px 10px 2px 2px;box-shadow:0 26px 0 -20px var(--rail)}
+.k-closet{background:var(--sunk);border:2px solid var(--line);background-image:linear-gradient(90deg,transparent calc(50% - 1px),var(--line) calc(50% - 1px) calc(50% + 1px),transparent calc(50% + 1px))}
+.k-bins{background:var(--sunk)}
+.k-mount{border:2px dashed var(--line);background:transparent}
+.k-outdoor{border:2px dashed var(--ok);background:color-mix(in srgb,var(--ok-soft) 50%,transparent)}
+.ztile{width:66px;border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative}
+.ztile img,.ztile .zph{width:60px;height:60px;border-radius:6px;object-fit:cover;background:var(--surface);border:2px solid var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.35);display:grid;place-items:center;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.zcap{font-size:10px;line-height:1.15;color:var(--ink);background:var(--surface);padding:1px 4px;border-radius:3px;max-width:66px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;text-align:center}
+.ztile.gone img,.ztile.gone .zph{opacity:.4;filter:grayscale(1)}
+.zst{position:absolute;top:-4px;left:-4px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:1px 5px;border-radius:99px;background:var(--loan-soft);color:var(--loan);box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.zst.missing{background:var(--bad-soft);color:var(--bad)} .zst.repair,.zst.low{background:var(--warn-soft);color:var(--warn)} .zst.spare,.zst.retired{background:var(--spare-soft);color:var(--spare)}
+.zarr{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+.zarr button{border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);font-size:12px;font-weight:600;padding:4px 8px}
+.loose{display:flex;flex-wrap:wrap;gap:10px;padding:10px 0}
+.loose .zcap{background:none}
+
+/* Printable labels */
+#printArea{display:none}
+@media print{
+  @page{size:letter;margin:0}
+  html,body{background:#fff!important;color:#000}
+  :root{padding:0}
+  body::before{display:none}
+  body > *:not(#printArea){display:none!important}
+  #printArea{display:block}
+}
+.lblpage{width:8.5in;height:11in;display:grid;overflow:hidden;break-after:page;page-break-after:always;background:#fff;color:#000}
+.lbl{display:flex;align-items:center;gap:.08in;padding:.05in .1in;overflow:hidden;font-family:var(--body);color:#000}
+.lbl.bordered{border:1px dashed #999;border-radius:.08in}
+.lbl svg{flex:none}
+.lbl .t{min-width:0;display:flex;flex-direction:column;line-height:1.1}
+.lbl b{font-family:var(--display);font-weight:700;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.lbl .c{font-family:var(--mono)}
+.lbl small{color:#444;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <header>
+    <h1><span class="led" aria-hidden="true"></span>Tech Stock<small id="subtitle">Saved on this device</small></h1>
+    <button class="iconbtn" id="settingsBtn" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+  </header>
+
+  <!-- TECH -->
+  <section id="v-garage">
+    <div class="summary">
+      <button data-f="all"><b id="n-all">0</b><span>things</span></button>
+      <button data-f="out" class="t-out"><b id="n-out">0</b><span>out</span></button>
+      <button data-f="attn" class="t-attn"><b id="n-attn">0</b><span>broken or missing</span></button>
+      <button data-f="low" class="t-low"><b id="n-low">0</b><span>supplies low</span></button>
+    </div>
+    <div class="search">
+      <input type="search" id="q" placeholder="Do I have a… (HDMI 2.1 cable, Zelda, 192.168.1.20)" aria-label="Search your tech">
+      <button class="btn ghost" id="mapBtn">Rooms</button><button class="btn" id="addBtn" aria-label="Add item">Add</button>
+    </div>
+    <div class="catrow"><div class="chips" id="depts"></div><div class="viewtoggle" role="group" aria-label="View"><button id="vw-list" aria-pressed="true">List</button><button id="vw-tiles" aria-pressed="false">Pictures</button></div></div>
+    <div class="chips cats" id="cats" hidden></div>
+    <div class="answer" id="answer"></div>
+    <div class="shelf" id="shelf"></div>
+    <p class="row" id="exampleNote" hidden style="margin-top:14px"><span class="hint">Things and places tagged Example are samples.</span><button class="link" id="clearEx">Remove examples</button></p>
+  </section>
+
+  <!-- SCAN -->
+  <section id="v-scan" hidden>
+    <h2>Scan</h2>
+    <p class="lede">Scan the barcode on a box, game case or device, or one of your Tech Stock asset tags. Things you already have open right away. New barcodes are looked up online.</p>
+    <div class="viewer" id="viewer">
+      <video id="video" playsinline muted autoplay></video>
+      <div class="aim" aria-hidden="true"></div>
+      <div class="camtools"><button class="camtool" id="torchBtn" aria-pressed="false" hidden>Light</button><button class="camtool" id="zoomBtn" hidden>1×</button></div>
+      <span class="camnote">Your browser will ask to use the camera</span>
+      <button class="btn" id="camBtn">Start camera</button>
+    </div>
+    <div class="row" style="margin-bottom:10px">
+      <input type="text" id="manualCode" placeholder="Or type a barcode or TS- code" aria-label="Barcode or label code" style="flex:1">
+      <button class="btn ghost" id="manualGo">Look up</button>
+    </div>
+    <div class="row" style="margin-bottom:14px">
+      <label class="btn ghost sm" for="idFile">Identify from photo</label>
+      <input type="file" id="idFile" accept="image/*" capture="environment" hidden>
+      <label class="link" for="scanFile" style="cursor:pointer">Read a barcode from a photo</label>
+      <input type="file" id="scanFile" accept="image/*" hidden>
+    </div>
+    <div class="status" id="scanStatus"></div>
+    <div id="scanResult"></div>
+  </section>
+
+  <!-- PLACES -->
+  <section id="v-places" hidden>
+    <h2>Places</h2>
+    <p class="lede">Rooms and the spots in them: the network rack, the TV stand, the office desk, the game shelf, the cable bin. Print a QR tag for each one, then scan it to see what's there.</p>
+    <div class="row" style="margin-bottom:10px"><button class="btn" id="addLoc">Add place</button><button class="btn ghost" id="printLabels">Print labels</button><button class="btn ghost" id="placesMap">Rooms view</button></div>
+    <div id="locList"></div>
+  </section>
+
+  <!-- ROOMS -->
+  <section id="v-map" hidden>
+    <div class="mapbar"><button class="link" id="mapBack">‹ Tech</button><div class="row"><button class="btn ghost sm" id="mapAddLoc">Add place</button><button class="btn ghost sm" id="arrangeBtn" aria-pressed="false">Arrange</button></div></div>
+    <h2>Rooms</h2>
+    <p class="lede" style="margin-bottom:8px">Each room with its rack, shelves and stands, and photos of what's on them. Tap a picture to open it, or a green tag to open the place. Faded pictures are away, lent out or broken.</p>
+    <div class="chips" id="mapWalls"></div>
+    <div class="roomgrid" id="wallUp"></div>
+    <p class="hint" id="mapHint" style="margin:8px 0 0"></p>
+    <div id="mapLooseBox" hidden><h3>Not in a place yet</h3><div class="loose" id="mapLoose"></div></div>
+  </section>
+
+  <!-- NETWORK -->
+  <section id="v-net" hidden>
+    <h2>Network</h2>
+    <p class="lede">What's plugged into what, IP addresses, PoE power budgets, NVR camera channels and warranties. Fill in the Network &amp; power part of a device to see it here.</p>
+    <div id="netBody"></div>
+  </section>
+
+  <!-- OUT -->
+  <section id="v-out" hidden>
+    <h2>Out &amp; broken</h2>
+    <p class="lede">Games and gear on loan, away from home, waiting on a repair, or missing. Overdue loans come first.</p>
+    <div id="outList"></div>
+  </section>
+
+  <!-- LIST -->
+  <section id="v-list" hidden>
+    <h2>Shopping list</h2>
+    <p class="lede">Batteries, cables and other supplies at or below their low level, plus missing or dead gear to replace. Tick a line once bought: supplies are restocked and devices go back to available.</p>
+    <div class="row" style="margin-bottom:6px">
+      <input type="text" id="extraName" placeholder="Add something else (e.g. 6 ft Cat6 patch cable)" aria-label="Extra list item" style="flex:1">
+      <button class="btn ghost" id="extraAdd">Add</button>
+    </div>
+    <div id="list"></div>
+  </section>
+</div>
+
+<nav class="tabs" aria-label="Sections"><div class="in">
+  <button data-tab="garage" aria-current="page"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/></svg>Tech</button>
+  <button data-tab="scan"><svg viewBox="0 0 24 24"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M8 8v8M11 8v8M13.5 8v8M16 8v8"/></svg>Scan</button>
+  <button data-tab="net"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v4M6 16v-4h12v4"/></svg>Network<span class="badge" id="netBadge" hidden>0</span></button>
+  <button data-tab="places"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 10h16M4 15h16M12 10v10"/></svg>Places</button>
+  <button data-tab="out"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>Out<span class="badge" id="outBadge" hidden>0</span></button>
+  <button data-tab="list"><svg viewBox="0 0 24 24"><path d="M5 7h1M5 12h1M5 17h1M9 7h10M9 12h10M9 17h10"/></svg>List<span class="badge" id="listBadge" hidden>0</span></button>
+</div></nav>
+
+<div class="sheet" id="sheet" hidden><div class="card" id="sheetCard" role="dialog" aria-modal="true"></div></div>
+<div class="gallery" id="gallery" hidden role="dialog" aria-modal="true" aria-label="Item pictures">
+  <div class="gbar"><button class="link" id="g-close">‹ Back</button><span class="count" id="g-count"></span><span style="width:48px"></span></div>
+  <button class="gnav prev" id="g-prev" aria-label="Previous item">‹</button><button class="gnav next" id="g-next" aria-label="Next item">›</button>
+  <div class="gtrack" id="g-track"></div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<div id="printArea"></div>
+<input type="file" id="rowPhoto" accept="image/*" capture="environment" hidden>
+<datalist id="roomList"></datalist>
+<datalist id="borrowerList"></datalist>
+
+<script>
+/* ---------- categories (modeled on electronics store departments) ---------- */
+/* Each department has a default kind. A ":s" suffix marks a supply category (gets used up or counted), ":t" a device category. */
+const RAW_TAX = [
+  ["Networking","tool",["Modems & ONTs","Routers & Gateways","Mesh Wi-Fi & Access Points","Network Switches","PoE Switches & Injectors","Firewalls","NAS & Network Storage","Servers & Mini PCs","Racks & Patch Panels","Network Adapters"]],
+  ["Security Cameras & NVR","tool",["PoE IP Cameras","Wi-Fi Cameras","Doorbell Cameras","NVRs & DVRs","Surveillance Hard Drives","Camera Mounts & Junction Boxes"]],
+  ["Computers","tool",["Desktops","Laptops","Monitors","Keyboards & Mice","Docks & Hubs","Webcams & Headsets","Printers & Scanners","Internal Parts & Upgrades","Drives & SSDs","USB Drives & Memory Cards","Ink & Toner:s"]],
+  ["Phones & Tablets","tool",["Phones","Tablets","E-readers","Smartwatches & Wearables","Chargers & Power Banks","Cases & Screen Protectors"]],
+  ["Gaming","tool",["Game Consoles","Handheld Consoles","Retro Consoles","Controllers","VR Headsets","Gaming Headsets","Charging Docks & Stands","Gaming Accessories"]],
+  ["Video Games","tool",["PlayStation 5 Games","PlayStation 4 Games","Xbox Series X|S Games","Xbox One Games","Nintendo Switch 2 Games","Nintendo Switch Games","PC Games","Retro Games","VR Games","Other Games"]],
+  ["TV & Home Theater","tool",["TVs","Projectors & Screens","AV Receivers & Amps","Soundbars","Speakers","Subwoofers","Streaming Devices","Blu-ray & Media Players","Universal Remotes","TV Mounts"]],
+  ["Audio","tool",["Headphones & Earbuds","Bluetooth Speakers","Turntables & Hi-Fi","Microphones","Audio Interfaces & Mixers"]],
+  ["Smart Home","tool",["Hubs & Bridges","Smart Speakers & Displays","Smart Lights","Smart Plugs & Switches","Thermostats","Sensors","Smart Locks","Robot Vacuums"]],
+  ["Cameras & Drones","tool",["Cameras","Lenses","Action Cameras","Drones","Camera Accessories"]],
+  ["Movies & Music","tool",["Blu-ray & 4K Discs","DVDs","Vinyl Records","CDs"]],
+  ["Power & Batteries","tool",["UPS & Battery Backup","Surge Protectors & Power Strips","Wall Chargers","AA & AAA Batteries:s","Coin & Button Cells:s","9V & Other Batteries:s","Rechargeable Batteries:s"]],
+  ["Cables & Adapters","supply",["HDMI Cables","USB Cables","Ethernet Patch Cables","DisplayPort Cables","Audio Cables","Power Cords","Coax & RF","Adapters & Dongles","Bulk Cable"]],
+  ["Install & Repair","tool",["Network Testers","Crimpers & Punch-Down Tools","Screwdriver & Repair Kits","Soldering","RJ45 Connectors & Keystones:s","Cable Ties & Velcro:s","Labels:s","Thermal Paste:s","Cleaning Supplies:s"]],
+  ["Other","tool",["Other","Other Supplies:s"]]
+];
+const TAX = RAW_TAX.map(([d, k, cats]) => ({ d, cats: cats.map(c => { const m = c.match(/^(.*):(s|t)$/); return { name: m ? m[1] : c, kind: m ? (m[2] === "s" ? "supply" : "tool") : k }; }) }));
+const DEPTS = TAX.map(t => t.d);
+const catsOf = d => (TAX.find(t => t.d === d) || { cats: [] }).cats;
+const kindOf = (d, c) => (catsOf(d).find(x => x.name === c) || {}).kind || "tool";
+const validCat = (d, c) => catsOf(d).some(x => x.name === c);
+const TAX_LINES = TAX.flatMap(t => t.cats.map(c => `${t.d} > ${c.name}`)).join("\n");
+
+const STATUS = {
+  available: "Available", spare: "Spare", loaned: "Loaned out", away: "Away", repair: "Broken", missing: "Missing", retired: "Retired"
+};
+const GAME_FORMATS = { disc:"Disc", cart:"Cartridge", digital:"Digital", code:"Download code" };
+const UNITS = ["count","pack","box","ft","m","spool","roll","bottle","tube","sheet"];
+const STEP_UNITS = new Set(["count","pack","box","roll","bottle","tube","sheet","spool"]);
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+const money = n => (n == null || n === "" || isNaN(n)) ? "" : "$" + Number(n).toFixed(2);
+const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+const addDays = (iso, n) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+const fmtDate = iso => { if (!iso) return ""; const d = new Date(iso + "T12:00:00"); if (isNaN(d)) return iso; return d.toLocaleDateString(undefined, { month:"short", day:"numeric", year: iso.slice(0,4) !== today().slice(0,4) ? "numeric" : undefined }); };
+const daysSince = iso => Math.round((new Date(today() + "T12:00:00") - new Date(iso + "T12:00:00")) / 864e5);
+const newId = p => p + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const initials = s => String(s || "?").split(/[^A-Za-z0-9]+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("");
+
+/* ---------- state & storage ---------- */
+const LS = "techstock.v1", CFG_KEY = "techstock.cfg";
+const S = { items:{}, locs:{}, extras:{}, seq:{ it:0, loc:0 }, tab:"garage", q:"", dept:"All", cat:"All", f:"all" };
+let CFG = {}; try { CFG = JSON.parse(localStorage.getItem(CFG_KEY) || "{}"); } catch(e){}
+function saveCfg(){ try { localStorage.setItem(CFG_KEY, JSON.stringify(CFG)); } catch(e){} }
+let NETREV = 0;
+function writeAll(){
+  NETREV++;
+  try { localStorage.setItem(LS, JSON.stringify({ items:S.items, locs:S.locs, extras:S.extras, seq:S.seq, deleted:S.deleted || {} })); }
+  catch(e){ toast("Couldn't save. This browser's storage may be full or blocked."); }
+}
+function saveAll(){
+  const changed = stampChanges();
+  writeAll();
+  if (changed && typeof markDirty === "function") markDirty();
+}
+function loadAll(){
+  let raw = null;
+  try { raw = localStorage.getItem(LS); } catch(e){}
+  if (raw) {
+    try { const d = JSON.parse(raw); Object.assign(S, { items:d.items || {}, locs:d.locs || {}, extras:d.extras || {}, seq:d.seq || { it:0, loc:0 }, deleted:d.deleted || {} }); snapshot(); return; }
+    catch(e){ try { localStorage.setItem(LS + ".unreadable-" + Date.now(), raw); } catch(err){} }
+  }
+  seedExamples();
+}
+/* What each record looked like at the last save, so saves can stamp edits and notice deletions however they happened. */
+const KINDS = ["items", "locs", "extras"];
+let SNAP = { items:{}, locs:{}, extras:{} };
+const bodyOf = r => { const { updated, ...rest } = r || {}; return JSON.stringify(rest); };
+function snapshot(){ SNAP = Object.fromEntries(KINDS.map(k => [k, Object.fromEntries(Object.entries(S[k] || {}).map(([id, r]) => [id, bodyOf(r)]))])); }
+function stampChanges(){
+  const now = Date.now(); S.deleted ||= {};
+  let changed = false;
+  for (const k of KINDS) {
+    const del = (S.deleted[k] ||= {});
+    for (const [id, r] of Object.entries(S[k] || {})) { if (SNAP[k][id] !== bodyOf(r)) { if (SNAP[k][id] !== undefined || !r.updated) r.updated = now; changed = true; } }
+    for (const id of Object.keys(SNAP[k])) if (!(S[k] || {})[id]) { del[id] = now; changed = true; }
+  }
+  snapshot();
+  return changed;
+}
+function nextCode(type){
+  S.seq[type] = (S.seq[type] || 0) + 1;
+  return `TS-${type === "it" ? "IT" : "LOC"}-${String(S.seq[type]).padStart(4, "0")}`;
+}
+function putItem(it){ it.updated = Date.now(); S.items[it.id] = it; saveAll(); renderAll(); }
+function dropItem(id){ removePhoto(id); delete S.items[id]; saveAll(); renderAll(); }
+function putLoc(l){ S.locs[l.id] = l; saveAll(); renderAll(); }
+
+function seedExamples(){
+  const rack = { id:"loc_ex_rack", name:"Network rack", room:"Basement", code:nextCode("loc"), order:1, kind:"rack", example:true };
+  const tv = { id:"loc_ex_tv", name:"TV stand", room:"Living room", code:nextCode("loc"), order:2, kind:"media", example:true };
+  const out = { id:"loc_ex_eaves", name:"Front of house", room:"Outside", code:nextCode("loc"), order:3, kind:"outdoor", example:true };
+  S.locs = { [rack.id]:rack, [tv.id]:tv, [out.id]:out };
+  const t = today(), id = {};
+  const ex = [
+    ["router", { kind:"tool", name:"Cloud Gateway router", department:"Networking", category:"Routers & Gateways", brand:"Ubiquiti", model:"UCG-Ultra", status:"available", locationId:rack.id, ip:"192.168.1.1", mac:"74:AC:B9:12:34:01", host:"gateway", purchase:{ price:129, date:"2025-03-02", store:"Ubiquiti Store" }, warrantyUntil: addDays(t, 40) }],
+    ["poe", { kind:"tool", name:"8-port PoE+ switch", department:"Networking", category:"PoE Switches & Injectors", brand:"TP-Link", model:"TL-SG1008MP", status:"available", locationId:rack.id, ip:"192.168.1.2", uplink:"router", port:"2", poeBudget:126, purchase:{ price:89.99, date:"2025-03-02", store:"Amazon" } }],
+    ["nvr", { kind:"tool", name:"8-channel NVR, 4 TB", department:"Security Cameras & NVR", category:"NVRs & DVRs", brand:"Reolink", model:"RLN8-410", status:"available", locationId:rack.id, ip:"192.168.1.10", uplink:"poe", port:"1", poeW:12, channels:8 }],
+    ["cam1", { kind:"tool", name:"Driveway camera", department:"Security Cameras & NVR", category:"PoE IP Cameras", brand:"Reolink", model:"RLC-810A", status:"available", locationId:out.id, ip:"192.168.1.21", uplink:"poe", port:"3", poeW:9, nvr:"nvr", channel:"1" }],
+    ["cam2", { kind:"tool", name:"Front door camera", department:"Security Cameras & NVR", category:"PoE IP Cameras", brand:"Reolink", model:"RLC-820A", status:"available", locationId:out.id, ip:"192.168.1.21", uplink:"poe", port:"4", poeW:9, nvr:"nvr", channel:"2", notes:"Same IP as the driveway camera: give one a new address" }],
+    ["ps5", { kind:"tool", name:"PlayStation 5 Pro", department:"Gaming", category:"Game Consoles", brand:"Sony", model:"CFI-7000", status:"available", locationId:tv.id, ip:"192.168.1.40", uplink:"router", port:"4", purchase:{ price:699.99, date:"2025-11-28", store:"Best Buy" }, warrantyUntil:"2026-11-28" }],
+    ["tv", { kind:"tool", name:"65\" OLED TV", department:"TV & Home Theater", category:"TVs", brand:"LG", model:"OLED65C4PUA", status:"available", locationId:tv.id, ip:"192.168.1.41", purchase:{ price:1599.99, date:"2024-11-29", store:"Costco" }, warrantyUntil:"2029-11-29" }],
+    ["zelda", { kind:"tool", name:"Zelda: Tears of the Kingdom", department:"Video Games", category:"Nintendo Switch Games", brand:"Nintendo", format:"cart", status:"loaned", locationId:tv.id, loan:{ to:"Jake (nephew)", since:addDays(t,-20), due:addDays(t,-3) } }],
+    ["gt7", { kind:"tool", name:"Gran Turismo 7", department:"Video Games", category:"PlayStation 5 Games", brand:"Sony", format:"disc", status:"available", locationId:tv.id }],
+    ["hdmi", { kind:"supply", name:"HDMI 2.1 cable, 6 ft", department:"Cables & Adapters", category:"HDMI Cables", unit:"count", amount:3, threshold:1, restock:2, price:12.99, store:"Amazon", locationId:tv.id }],
+    ["aa", { kind:"supply", name:"AA batteries", department:"Power & Batteries", category:"AA & AAA Batteries", unit:"count", amount:2, threshold:4, restock:24, price:17.99, store:"Costco", locationId:tv.id }]
+  ];
+  S.items = {};
+  ex.forEach(([k]) => id[k] = newId("it"));
+  ex.forEach(([k, e]) => {
+    const n = { ...e, id:id[k], code:nextCode("it"), example:true, updated:Date.now() };
+    if (n.uplink) n.uplink = id[n.uplink]; if (n.nvr) n.nvr = id[n.nvr];
+    S.items[n.id] = n;
+  });
+  saveAll();
+}
+
+/* ---------- photos (IndexedDB, so localStorage stays small) ---------- */
+let idbP = null;
+function idb(){
+  return idbP ||= new Promise((res, rej) => { const r = indexedDB.open("techstock", 1); r.onupgradeneeded = () => r.result.createObjectStore("photos"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+}
+async function photoOp(mode, fn){
+  const db = await idb();
+  return new Promise((res, rej) => { const tx = db.transaction("photos", mode); const req = fn(tx.objectStore("photos")); tx.oncomplete = () => res(req ? req.result : undefined); tx.onerror = () => rej(tx.error); });
+}
+const photoCache = new Map();
+async function photoGet(id){ if (photoCache.has(id)) return photoCache.get(id); try { const v = await photoOp("readonly", st => st.get(id)); if (v) photoCache.set(id, v); return v || null; } catch(e){ return null; } }
+async function photoPut(id, v){ photoCache.set(id, v); try { await photoOp("readwrite", st => st.put(v, id)); } catch(e){ toast("Couldn't save the photo on this device."); } }
+async function photoDel(id){ photoCache.delete(id); try { await photoOp("readwrite", st => st.delete(id)); } catch(e){} }
+async function photoAll(){
+  const out = {};
+  try { const db = await idb(); await new Promise(res => { const c = db.transaction("photos").objectStore("photos").openCursor(); c.onsuccess = () => { const cur = c.result; if (cur) { out[cur.key] = cur.value; cur.continue(); } else res(); }; c.onerror = res; }); } catch(e){}
+  return out;
+}
+async function makeThumb(blob, max = 720){
+  const bmp = await createImageBitmap(blob);
+  const s = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  const c = document.createElement("canvas"); c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s);
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+  return c.toDataURL("image/jpeg", 0.8);
+}
+function fillPhotos(root){
+  (root || document).querySelectorAll("img[data-photo]:not([src])").forEach(async img => { const v = await photoGet(img.dataset.photo); if (v) img.src = v; });
+}
+/* ---------- online photo storage (Cloudflare Worker + KV) ---------- */
+const cloudOn = () => !!(cloudBase() && CFG.cloudKey);
+/* Address of the Cloudflare storage worker. Not secret: nothing can be read or changed there without the household key, which is never in this code. */
+const BUILT_IN_CLOUD = "https://garage-photos.prestonmcgill.workers.dev";
+const cloudBase = () => String(CFG.cloudUrl || BUILT_IN_CLOUD).trim().replace(/\/+$/, "");
+/* Online photos are private: the key goes along with each picture request. */
+const privSrc = u => u && CFG.cloudKey && cloudBase() && u.startsWith(cloudBase() + "/photos/") ? u + (u.includes("?") ? "&" : "?") + "k=" + encodeURIComponent(CFG.cloudKey) : u;
+const imgSrc = it => it.photoUrl ? `src="${esc(privSrc(it.photoUrl))}"` : `data-photo="${esc(it.id)}"`;
+function dataUrlToBlob(d){ const b = atob(d.split(",")[1]); const a = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return new Blob([a], { type:"image/jpeg" }); }
+async function cloudPut(key, blob){
+  let r;
+  try { r = await fetch(`${cloudBase()}/photos/${key}`, { method:"PUT", headers:{ "Authorization":"Bearer " + CFG.cloudKey, "Content-Type":"image/jpeg" }, body: blob }); }
+  catch(e){ throw new Error("Couldn't reach photo storage. Check your connection and the storage link in Settings."); }
+  if (r.status === 401) throw new Error("Photo storage rejected the upload key. Check it in Settings.");
+  if (!r.ok) throw new Error("Photo upload failed (error " + r.status + ").");
+  return `${cloudBase()}/photos/${key}`;
+}
+async function cloudDel(url){
+  if (!cloudOn() || !url || !url.startsWith(cloudBase() + "/photos/")) return;
+  try { await fetch(url, { method:"DELETE", headers:{ "Authorization":"Bearer " + CFG.cloudKey } }); } catch(e){}
+}
+/* Saves a photo for an item and returns the fields to merge into it. Online when storage is connected; on this device otherwise. */
+async function storePhoto(id, thumb, prevUrl){
+  if (cloudOn()) {
+    try {
+      const url = await cloudPut(`${id}-${Date.now().toString(36)}`, dataUrlToBlob(thumb));
+      if (prevUrl) cloudDel(prevUrl);
+      photoDel(id);
+      return { hasPhoto:true, photoUrl:url };
+    } catch(err){ toast(err.message + " Saved on this phone for now."); }
+  } else toast("Photo saved on this phone. Connect online photo storage in Settings to reach it from any device.");
+  await photoPut(id, thumb);
+  return { hasPhoto:true, photoUrl:"" };
+}
+async function removePhoto(id){
+  const it = S.items[id]; if (!it) return;
+  if (it.photoUrl) cloudDel(it.photoUrl);
+  await photoDel(id);
+}
+async function uploadLocalPhotos(onProgress){
+  const todo = Object.values(S.items).filter(i => i.hasPhoto && !i.photoUrl);
+  let done = 0;
+  for (const it of todo) {
+    const local = await photoGet(it.id); if (!local) continue;
+    const url = await cloudPut(`${it.id}-${Date.now().toString(36)}`, dataUrlToBlob(local));
+    S.items[it.id] = { ...S.items[it.id], photoUrl:url }; saveAll(); await photoDel(it.id);
+    done++; onProgress && onProgress(done, todo.length);
+  }
+  renderAll();
+  return { done, total: todo.length };
+}
+
+const CAM_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>`;
+const photoBtnHTML = (it, act = "act") => it.hasPhoto
+  ? `<button class="thumbbtn" data-${act}="photo" aria-label="See photo of ${esc(it.name)}"><img class="thumb" ${imgSrc(it)} alt="${esc(it.name)}"></button>`
+  : `<button class="thumbbtn add" data-${act}="snap" aria-label="Take a photo of ${esc(it.name)}">${CAM_SVG}<span>Photo</span></button>`;
+let photoTarget = null;
+function takePhoto(id, after){ photoTarget = { id, after }; $("#rowPhoto").click(); }
+$("#rowPhoto").addEventListener("change", async e => {
+  const f = e.target.files[0]; e.target.value = "";
+  const t = photoTarget; photoTarget = null;
+  if (!f || !t || !S.items[t.id]) return;
+  try {
+    toast("Saving photo…");
+    const thumb = await makeThumb(f);
+    const fields = await storePhoto(t.id, thumb, S.items[t.id].photoUrl);
+    const it = { ...S.items[t.id], ...fields }; delete it.example;
+    putItem(it); if (fields.photoUrl) toast("Photo saved online");
+    if (t.after) t.after();
+  } catch(err){ toast("That photo couldn't be saved. Try again."); }
+});
+function openPhoto(id){
+  const it = S.items[id]; if (!it) return;
+  openSheet(`<h2>${esc(it.name)}</h2><div class="meta"><span>${esc(it.category)}</span>${locName(it.locationId) ? `<span>${esc(locName(it.locationId))}</span>` : ""}</div>
+    <img class="bigphoto" ${imgSrc(it)} alt="${esc(it.name)}">
+    ${it.photoUrl ? `<p class="hint" style="margin:-6px 0 12px">Stored online, visible only in this app.</p>` : cloudOn() ? `<p class="hint" style="margin:-6px 0 12px">Stored on this phone only.</p>` : ""}
+    <div class="actions"><button class="btn" data-a="retake">Retake photo</button><button class="btn ghost" data-a="item">Open item</button></div>
+    <div class="minor"><button class="link" data-a="remove" style="color:var(--bad)">Remove photo</button><button class="link" data-a="close" style="margin-left:auto">Close</button></div>`);
+  $("#sheetCard").onclick = async e => {
+    const b = e.target.closest("[data-a]"); if (!b) return;
+    const a = b.dataset.a;
+    if (a === "close") return closeSheet();
+    if (a === "item") return openItem(id);
+    if (a === "retake") return takePhoto(id, () => openPhoto(id));
+    if (a === "copy") { const u = S.items[id].photoUrl; try { await navigator.clipboard.writeText(u); toast("Link copied"); } catch(err){ toast(u); } return; }
+    if (a === "remove") {
+      if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = "Tap again to remove"; return; }
+      await removePhoto(id); const n = { ...S.items[id], hasPhoto:false, photoUrl:"" }; putItem(n); toast("Photo removed"); openItem(id);
+    }
+  };
+}
+function rowPhotoAct(a, id, after){
+  if (a === "photo") { openPhoto(id); return true; }
+  if (a === "snap") { takePhoto(id, after); return true; }
+  return false;
+}
+const thumbHTML = (it, cls = "thumb") => it.hasPhoto ? `<img class="${cls}" ${imgSrc(it)} alt="">` : `<span class="${cls}" aria-hidden="true">${esc(initials(it.category || it.name))}</span>`;
+
+/* ---------- item logic ---------- */
+const isTool = it => it.kind === "tool";
+const isLow = it => !isTool(it) && num(it.amount) <= num(it.threshold);
+const isOut = it => isTool(it) && (it.status === "loaned" || it.status === "away");
+const isGame = it => it.department === "Video Games" || it.department === "Movies & Music";
+const isDevice = it => isTool(it) && !isGame(it);
+const isAttn = it => isTool(it) && (it.status === "repair" || it.status === "missing");
+const isOverdue = it => it.status === "loaned" && it.loan && it.loan.due && it.loan.due < today();
+const needsBuying = it => isLow(it) || (isTool(it) && (it.status === "missing" || it.replace));
+const gone = it => isTool(it) && it.status && it.status !== "available" && it.status !== "spare";
+const locName = id => (S.locs[id] || {}).name || "";
+const amtText = it => ({ big: String(+num(it.amount).toFixed(2)), small: it.unit === "count" ? "left" : it.unit });
+
+const stem = w => { w = w.toLowerCase().replace(/[^a-z0-9]/g, ""); if (/ies$/.test(w)) return w.slice(0, -3) + "y"; if (/sses$/.test(w)) return w.slice(0, -2); if (/ss$/.test(w)) return w; return w.replace(/s$/, "").replace(/e$/, ""); };
+const STOP = new Set(["and","the","with","for","tool","set","kit","inch","pack","piece","pc","new"]);
+const words = s => String(s || "").split(/[^A-Za-z0-9]+/).map(stem).filter(w => w.length > 2 && !STOP.has(w));
+function guessCategory(text){
+  const tw = new Set(words(text));
+  let best = null, bs = 0;
+  for (const t of TAX) for (const c of t.cats) {
+    const cw = words(c.name); if (!cw.length) continue;
+    let s = cw.filter(w => tw.has(w)).length; if (!s) continue;
+    s += cw.filter(w => tw.has(w)).length / cw.length * 0.5;
+    if (s > bs) { bs = s; best = { department:t.d, category:c.name, kind:c.kind }; }
+  }
+  return best;
+}
+function searchText(it){ return [it.name, it.brand, it.model, it.code, it.barcode, it.category, it.department, locName(it.locationId), (S.locs[it.locationId] || {}).room, it.notes, it.serial, it.ip, it.mac, it.host, it.firmware, it.format && GAME_FORMATS[it.format], it.loan && it.loan.to].join(" ").toLowerCase(); }
+function matches(it, q){
+  if (!q) return true;
+  const hay = searchText(it), hayW = new Set(words(hay));
+  return q.toLowerCase().split(/\s+/).filter(Boolean).every(t => hay.includes(t) || hayW.has(stem(t)));
+}
+
+/* ---------- render ---------- */
+function renderAll(){
+  renderGarage(); renderBadges();
+  if (S.tab === "places") renderPlaces();
+  if (S.tab === "out") renderOut();
+  if (S.tab === "list") renderList();
+  if (S.tab === "map") renderMap();
+  if (S.tab === "net") renderNet();
+}
+function renderBadges(){
+  const items = Object.values(S.items);
+  const out = items.filter(isOut).length, buy = items.filter(needsBuying).length + Object.keys(S.extras).length;
+  $("#outBadge").hidden = !out; $("#outBadge").textContent = out;
+  $("#listBadge").hidden = !buy; $("#listBadge").textContent = buy;
+  const ni = netIssues().list.length; $("#netBadge").hidden = !ni; $("#netBadge").textContent = ni;
+}
+function renderGarage(){
+  const items = Object.values(S.items);
+  $("#n-all").textContent = items.length;
+  $("#n-out").textContent = items.filter(isOut).length;
+  $("#n-attn").textContent = items.filter(isAttn).length;
+  $("#n-low").textContent = items.filter(isLow).length;
+  document.querySelectorAll(".summary [data-f]").forEach(b => b.setAttribute("aria-pressed", String(S.f === b.dataset.f)));
+
+  const present = DEPTS.filter(d => items.some(i => i.department === d));
+  if (S.dept !== "All" && !present.includes(S.dept)) { S.dept = "All"; S.cat = "All"; }
+  $("#depts").innerHTML = ["All", ...present].map(d => `<button class="chip" data-dept="${esc(d)}" aria-pressed="${S.dept === d}">${esc(d === "All" ? "All departments" : d)}</button>`).join("");
+  if (S.dept !== "All") {
+    const cats = catsOf(S.dept).map(c => c.name).filter(c => items.some(i => i.department === S.dept && i.category === c));
+    $("#cats").innerHTML = ["All", ...cats].map(c => `<button class="chip" data-cat="${esc(c)}" aria-pressed="${S.cat === c}">${esc(c === "All" ? "Everything in " + S.dept : c)}</button>`).join("");
+    $("#cats").hidden = false;
+  } else $("#cats").hidden = true;
+
+  const fpass = it => S.f === "all" || (S.f === "out" && isOut(it)) || (S.f === "attn" && isAttn(it)) || (S.f === "low" && isLow(it));
+  const list = items.filter(it => fpass(it) && (S.dept === "All" || it.department === S.dept) && (S.cat === "All" || it.category === S.cat) && matches(it, S.q))
+    .sort((a, b) => (isOverdue(b) - isOverdue(a)) || (isAttn(b) - isAttn(a)) || (isLow(b) - isLow(a)) || a.name.localeCompare(b.name));
+
+  if (S.q.trim()) {
+    const tools = list.filter(isTool), avail = tools.filter(t => t.status === "available" || t.status === "spare").reduce((n, t) => n + (num(t.qty) || 1), 0);
+    const sup = list.filter(i => !isTool(i));
+    $("#answer").innerHTML = list.length
+      ? `<b>Yes.</b> ${list.length} match${list.length === 1 ? "" : "es"}${tools.length ? ` · ${avail} available` : ""}${sup.length ? ` · ${sup.length} suppl${sup.length === 1 ? "y" : "ies"}` : ""}`
+      : `<b>Not found.</b> Nothing you own matches “${esc(S.q.trim())}”. <button class="link" data-act="addFromSearch">Add it</button>`;
+  } else $("#answer").innerHTML = "";
+
+  S.shown = list.map(i => i.id);
+  $("#shelf").classList.toggle("tiles", S.view === "tiles");
+  $("#vw-list").setAttribute("aria-pressed", String(S.view !== "tiles")); $("#vw-tiles").setAttribute("aria-pressed", String(S.view === "tiles"));
+  $("#shelf").innerHTML = list.length ? list.map(S.view === "tiles" ? pictureTileHTML : rowHTML).join("") :
+    S.q.trim() ? "" : `<div class="empty">${items.length ? "Nothing matches these filters." : "Nothing here yet. Tap Add, or scan the barcode on a box or game case to start."}</div>`;
+  $("#exampleNote").hidden = !items.some(i => i.example) && !Object.values(S.locs).some(l => l.example);
+  fillPhotos($("#shelf"));
+}
+function rowHTML(it){
+  const loc = locName(it.locationId);
+  const meta = [it.category, loc, isGame(it) && it.format ? GAME_FORMATS[it.format] : ""].filter(Boolean);
+  let right;
+  if (isTool(it)) {
+    const st = isOverdue(it) ? `<span class="pill overdue">Overdue</span>` : `<span class="pill ${it.status}">${STATUS[it.status] || it.status}</span>`;
+    right = `<div class="right">${st}${num(it.qty) > 1 ? `<span class="qtyx">×${num(it.qty)}</span>` : ""}</div>`;
+  } else {
+    const a = amtText(it), step = STEP_UNITS.has(it.unit);
+    right = `<div class="qty">
+      <button class="step" data-act="${step ? "dec" : "set"}" aria-label="${step ? "Use one" : "Update amount"}">${step ? "−" : "✎"}</button>
+      <div class="amt ${isLow(it) ? "low" : ""}">${a.big}<small>${esc(a.small)}</small></div>
+      ${step ? `<button class="step" data-act="inc" aria-label="Add one">+</button>` : ""}
+    </div>`;
+  }
+  return `<div class="item" data-id="${esc(it.id)}">
+    ${photoBtnHTML(it)}
+    <button class="main" data-act="open">
+      <div class="name">${esc(it.name)}${it.example ? ` <span class="pill ex">Example</span>` : ""}</div>
+      <div class="meta">${meta.map(m => `<span>${esc(m)}</span>`).join("")}${it.ip ? `<span class="mono">${esc(it.ip)}</span>` : ""}${it.status === "loaned" && it.loan ? `<span>with ${esc(it.loan.to)}</span>` : ""}${netPills(it)}</div>
+    </button>
+    ${right}
+  </div>`;
+}
+
+/* ---------- sheet ---------- */
+function openSheet(html){ if (cam && cam.els.inSheet) stopCam(); $("#sheetCard").innerHTML = html; $("#sheet").hidden = false; $("#sheetCard").scrollTop = 0; fillPhotos($("#sheetCard")); }
+function closeSheet(){ if (cam && cam.els.inSheet) stopCam(); $("#sheet").hidden = true; $("#sheetCard").innerHTML = ""; }
+$("#sheet").addEventListener("click", e => { if (e.target.id === "sheet") closeSheet(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#sheet").hidden) closeSheet(); });
+
+/* ---------- network, power & cameras ----------
+   Devices can record their IP and MAC address, what they're plugged into (and which port), PoE power they draw
+   or can supply, and for cameras which NVR channel records them. The Network tab draws that as a tree and
+   flags clashes: two devices on one IP, a switch over its PoE budget, two cameras on one NVR channel. */
+const ipNum = ip => { const m = String(ip || "").trim().match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/); return m && m.slice(1).every(x => +x < 256) ? m.slice(1).reduce((n, x) => n * 256 + +x, 0) : null; };
+const normMac = v => { const h = String(v || "").replace(/^(mac|mac address)\s*[:#]?\s*/i, "").replace(/[^0-9a-f]/gi, ""); return h.length === 12 ? h.toUpperCase().match(/../g).join(":") : String(v || "").trim(); };
+const cleanSerial = v => String(v || "").replace(/^\s*(s\/?n|serial(\s*no\.?|\s*number)?)\s*[:#]?\s*/i, "").trim();
+const daysUntil = iso => -daysSince(iso);
+const live = it => isDevice(it) && it.status !== "retired";
+const childrenOf = id => Object.values(S.items).filter(i => live(i) && i.uplink === id).sort((a, b) => (parseInt(a.port) || 999) - (parseInt(b.port) || 999) || a.name.localeCompare(b.name));
+const camerasOn = id => Object.values(S.items).filter(i => live(i) && i.nvr === id).sort((a, b) => (parseInt(a.channel) || 999) - (parseInt(b.channel) || 999) || a.name.localeCompare(b.name));
+const poeUse = id => +childrenOf(id).reduce((t, c) => t + num(c.poeW), 0).toFixed(1);
+const isNvr = it => /NVR/.test(it.category || "") || num(it.channels) > 0;
+const itemLink = it => `<button class="link" data-a="goto" data-f="${esc(it.id)}">${esc(it.name)}</button>`;
+let netMemo = { rev: -1, v: null };
+function netIssues(){
+  if (netMemo.rev === NETREV && netMemo.v) return netMemo.v;
+  const list = [], byItem = {};
+  const flag = (ids, sev, t, short) => { list.push({ ids, sev, t }); ids.forEach(id => (byItem[id] ||= []).push({ sev, t, short })); };
+  const devs = Object.values(S.items).filter(live);
+  const group = key => { const g = {}; devs.forEach(d => { const k = key(d); if (k) (g[k] ||= []).push(d); }); return Object.entries(g).filter(([, v]) => v.length > 1); };
+  group(d => ipNum(d.ip) != null ? String(d.ip).trim() : "").forEach(([ip, ds]) => flag(ds.map(d => d.id), "bad", `${ip} is set on ${ds.map(d => d.name).join(" and ")}. Only one device can use an address.`, "IP clash"));
+  group(d => normMac(d.mac).length === 17 ? normMac(d.mac) : "").forEach(([mac, ds]) => flag(ds.map(d => d.id), "warn", `${ds.map(d => d.name).join(" and ")} have the same MAC address (${mac}). One of them is probably a typo.`, "Same MAC"));
+  devs.filter(d => d.ip && ipNum(d.ip) == null).forEach(d => flag([d.id], "warn", `${d.name}'s IP address "${d.ip}" isn't a valid address.`, "Bad IP"));
+  group(d => d.uplink && S.items[d.uplink] && d.port ? d.uplink + "|" + String(d.port).trim() : "").forEach(([k, ds]) => flag(ds.map(d => d.id), "warn", `${ds.map(d => d.name).join(" and ")} are both on port ${ds[0].port} of ${S.items[ds[0].uplink].name}.`, "Same port"));
+  devs.filter(d => num(d.poeBudget) > 0).forEach(sw => {
+    const use = poeUse(sw.id), b = num(sw.poeBudget);
+    if (use > b) flag([sw.id], "bad", `${sw.name} is over its PoE budget: ${use} W of ${b} W. Devices may reboot or not power on.`, "PoE over");
+    else if (use > b * 0.9) flag([sw.id], "warn", `${sw.name} is close to its PoE budget: ${use} W of ${b} W.`, "PoE high");
+  });
+  devs.filter(d => num(d.poeW) > 0 && d.uplink && S.items[d.uplink] && !num(S.items[d.uplink].poeBudget) && !/PoE|NVR/i.test(S.items[d.uplink].category || ""))
+    .forEach(d => flag([d.id], "warn", `${d.name} needs ${num(d.poeW)} W of PoE, but ${S.items[d.uplink].name} isn't set up as a PoE switch. Add its PoE budget, or check it's powered another way.`, "No PoE"));
+  devs.filter(isNvr).forEach(n => {
+    const cams = camerasOn(n.id), cap = num(n.channels);
+    if (cap && cams.length > cap) flag([n.id, ...cams.map(c => c.id)], "bad", `${n.name} has ${cams.length} cameras but only ${cap} channels.`, "Too many cams");
+    const byCh = {}; cams.forEach(c => { if (c.channel) (byCh[String(c.channel).trim()] ||= []).push(c); });
+    Object.entries(byCh).filter(([, v]) => v.length > 1).forEach(([ch, v]) => flag(v.map(c => c.id), "bad", `${v.map(c => c.name).join(" and ")} are both set to channel ${ch} on ${n.name}.`, "Channel clash"));
+    if (cap) cams.filter(c => parseInt(c.channel) > cap).forEach(c => flag([c.id], "warn", `${c.name} is on channel ${c.channel}, but ${n.name} only has ${cap}.`, "Bad channel"));
+  });
+  netMemo = { rev: NETREV, v: { list, byItem } };
+  return netMemo.v;
+}
+function netPills(it){
+  const iss = (netIssues().byItem[it.id] || [])[0];
+  let h = iss ? `<span class="pill ${iss.sev === "bad" ? "missing" : "repair"}">${esc(iss.short)}</span>` : "";
+  if (isDevice(it) && it.warrantyUntil && it.status !== "retired") { const d = daysUntil(it.warrantyUntil); if (d >= 0 && d <= 30) h += `<span class="pill repair">Warranty ${d}d</span>`; }
+  return h;
+}
+function netFacts(it, add){
+  add("Network", esc([it.ip, it.host].filter(Boolean).join(" · ")) && `<span class="mono">${esc([it.ip, it.host].filter(Boolean).join(" · "))}</span>`);
+  add("MAC", it.mac ? `<span class="mono">${esc(it.mac)}</span>` : "");
+  add("Firmware", it.firmware ? `<span class="mono">${esc(it.firmware)}</span>` : "");
+  const up = S.items[it.uplink];
+  if (up) add("Plugged into", `${itemLink(up)}${it.port ? ` · port ${esc(it.port)}` : ""}`);
+  if (num(it.poeW)) add("PoE", `draws ${num(it.poeW)} W`);
+  const kids = childrenOf(it.id);
+  if (num(it.poeBudget)) { const use = poeUse(it.id), b = num(it.poeBudget), pct = Math.min(100, Math.round(use / b * 100)); add("PoE budget", `${use} of ${b} W used<div class="meter ${use > b ? "bad" : use > b * .9 ? "warn" : ""}"><i style="width:${pct}%"></i></div>`); }
+  if (kids.length) add("Plugged in here", kids.map(k => `${itemLink(k)}${k.port ? ` <span class="hint">(port ${esc(k.port)})</span>` : ""}`).join(", "));
+  const nvr = S.items[it.nvr];
+  if (nvr) add("Recorded by", `${itemLink(nvr)}${it.channel ? ` · channel ${esc(it.channel)}` : ""}`);
+  if (isNvr(it)) { const cams = camerasOn(it.id); add("Cameras", `${cams.length}${num(it.channels) ? ` of ${num(it.channels)} channels` : ""}${cams.length ? ": " + cams.map(c => `${itemLink(c)}${c.channel ? ` <span class="hint">(ch ${esc(c.channel)})</span>` : ""}`).join(", ") : ""}`); }
+}
+function deviceOptions(sel, selfId, nvrOnly){
+  const order = d => /^Networking/.test(d.department) ? 0 : /^Security/.test(d.department) ? 1 : 2;
+  const ds = Object.values(S.items).filter(d => isDevice(d) && d.id !== selfId && (!nvrOnly || isNvr(d) || d.id === sel))
+    .sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name));
+  return `<option value="">—</option>` + ds.map(d => `<option value="${esc(d.id)}" ${d.id === sel ? "selected" : ""}>${esc(d.name)}${d.ip ? " · " + esc(d.ip) : ""}</option>`).join("");
+}
+/* Which of your consoles a game plays on (including backward compatibility). */
+const PLAYS = {
+  "PlayStation 5 Games": /playstation\s*5|\bps5\b/i, "PlayStation 4 Games": /playstation\s*[45]|\bps[45]\b/i,
+  "Xbox Series X|S Games": /xbox series/i, "Xbox One Games": /xbox (one|series)/i,
+  "Nintendo Switch 2 Games": /switch\s*2/i, "Nintendo Switch Games": /switch/i
+};
+function playsOn(g){
+  const re = PLAYS[g.category];
+  const pool = Object.values(S.items).filter(i => isDevice(i) && i.status !== "retired");
+  if (re) return pool.filter(i => /Consoles/.test(i.category) && re.test([i.name, i.model, i.brand].join(" ")));
+  if (g.category === "PC Games") return pool.filter(i => /Desktops|Laptops|Handheld/.test(i.category));
+  if (g.category === "VR Games") return pool.filter(i => /VR Headsets/.test(i.category));
+  return [];
+}
+/* ---------- the Network tab ---------- */
+function renderNet(){
+  const devs = Object.values(S.items).filter(live);
+  const netDevs = devs.filter(d => d.ip || d.mac || d.uplink || d.host || num(d.poeBudget) || childrenOf(d.id).length || camerasOn(d.id).length);
+  const { list } = netIssues();
+  let h = "";
+  if (list.length) h += `<div class="netsec"><h3>Needs fixing</h3>${list.map(x => `<button class="issue ${x.sev === "warn" ? "warn" : ""}" data-open="${esc(x.ids[0])}"><i>!</i><span>${esc(x.t)}</span></button>`).join("")}</div>`;
+  if (netDevs.length) {
+    const inNet = new Set(netDevs.map(d => d.id)), seen = new Set();
+    const roots = netDevs.filter(d => !d.uplink || !inNet.has(d.uplink)).sort((a, b) => childrenOf(b.id).length - childrenOf(a.id).length || a.name.localeCompare(b.name));
+    const rows = [];
+    const walk = (d, prefix, last, depth) => {
+      if (seen.has(d.id)) return; seen.add(d.id);
+      const branch = depth ? prefix + (last ? "└─ " : "├─ ") : "";
+      rows.push(`<button class="node" data-open="${esc(d.id)}"><span class="nm">${branch ? `<span class="branch">${branch}</span>` : ""}<b>${esc(d.name)}</b>${d.port && depth ? `<span class="hint">port ${esc(d.port)}</span>` : ""}${num(d.poeW) ? `<span class="pill net">${num(d.poeW)} W</span>` : ""}</span><span class="addr">${esc(d.ip || "")}</span></button>`);
+      const kids = childrenOf(d.id).filter(k => inNet.has(k.id));
+      kids.forEach((k, i) => walk(k, depth ? prefix + (last ? "   " : "│  ") : "", i === kids.length - 1, depth + 1));
+    };
+    roots.forEach(r => walk(r, "", true, 0));
+    netDevs.filter(d => !seen.has(d.id)).forEach(d => walk(d, "", true, 0));
+    h += `<div class="netsec"><h3>How it's connected</h3><div class="tree">${rows.join("")}</div></div>`;
+  }
+  const sws = devs.filter(d => num(d.poeBudget) > 0 || childrenOf(d.id).some(c => num(c.poeW)));
+  if (sws.length) h += `<div class="netsec"><h3>PoE power</h3>${sws.map(sw => {
+    const use = poeUse(sw.id), b = num(sw.poeBudget), pct = b ? Math.min(100, Math.round(use / b * 100)) : 0;
+    const kids = childrenOf(sw.id).filter(c => num(c.poeW));
+    return `<div class="budget"><div class="bh"><button data-open="${esc(sw.id)}">${esc(sw.name)}</button><span class="mono">${use} W${b ? ` of ${b} W` : ""}</span></div>
+      ${b ? `<div class="meter ${use > b ? "bad" : use > b * .9 ? "warn" : ""}"><i style="width:${pct}%"></i></div><span class="hint">${use > b ? `${+(use - b).toFixed(1)} W over budget` : `${+(b - use).toFixed(1)} W spare`}</span>` : `<span class="hint">Add this switch's PoE budget to see how much is spare.</span>`}
+      ${kids.length ? `<div class="meta" style="margin-top:6px">${kids.map(k => `<span>${esc(k.name)} ${num(k.poeW)} W</span>`).join("")}</div>` : ""}</div>`;
+  }).join("")}</div>`;
+  const nvrs = devs.filter(d => isNvr(d));
+  if (nvrs.length) h += `<div class="netsec"><h3>NVR channels</h3>${nvrs.map(n => {
+    const cams = camerasOn(n.id), cap = num(n.channels), n_ = Math.max(cap, ...cams.map(c => parseInt(c.channel) || 0), 0);
+    const byCh = {}; cams.forEach(c => (byCh[parseInt(c.channel) || 0] ||= []).push(c));
+    const cells = [];
+    for (let ch = 1; ch <= n_; ch++) { const cs = byCh[ch] || []; cells.push(cs.length ? `<button class="chan ${cs.length > 1 ? "clash" : ""}" data-open="${esc(cs[0].id)}"><b>${ch}</b>${esc(cs.map(c => c.name).join(" + "))}</button>` : `<div class="chan free"><b>${ch}</b>free</div>`); }
+    (byCh[0] || []).forEach(c => cells.push(`<button class="chan" data-open="${esc(c.id)}"><b>?</b>${esc(c.name)}</button>`));
+    return `<div class="budget"><div class="bh"><button data-open="${esc(n.id)}">${esc(n.name)}</button><span class="mono">${cams.length}${cap ? ` / ${cap}` : ""} cameras</span></div>${cells.length ? `<div class="chans">${cells.join("")}</div>` : `<span class="hint">No cameras linked yet. Open a camera, then Network &amp; power → Recorded by.</span>`}</div>`;
+  }).join("")}</div>`;
+  const ips = devs.filter(d => d.ip || d.mac).sort((a, b) => (ipNum(a.ip) ?? 4e9) - (ipNum(b.ip) ?? 4e9) || a.name.localeCompare(b.name));
+  if (ips.length) {
+    const clash = new Set(list.filter(x => /set on|same MAC/i.test(x.t)).flatMap(x => x.ids));
+    h += `<div class="netsec"><div class="row between"><h3>IP addresses</h3><button class="link" data-copy="ips">Copy as spreadsheet</button></div><div class="tablewrap"><table class="iptable"><thead><tr><th>IP</th><th>Device</th><th>MAC</th></tr></thead><tbody>${ips.map(d => `<tr class="${clash.has(d.id) ? "bad" : ""}"><td class="m">${esc(d.ip || "—")}</td><td><button data-open="${esc(d.id)}">${esc(d.name)}</button>${d.host ? `<div class="hint mono">${esc(d.host)}</div>` : ""}</td><td class="m">${esc(d.mac || "")}</td></tr>`).join("")}</tbody></table></div></div>`;
+  }
+  const war = devs.filter(d => d.warrantyUntil && daysUntil(d.warrantyUntil) <= 90 && daysUntil(d.warrantyUntil) >= -30).sort((a, b) => a.warrantyUntil.localeCompare(b.warrantyUntil));
+  if (war.length) h += `<div class="netsec"><h3>Warranties ending</h3><div class="tree">${war.map(d => { const n = daysUntil(d.warrantyUntil); return `<button class="node" data-open="${esc(d.id)}"><span class="nm"><b>${esc(d.name)}</b></span><span class="addr">${n < 0 ? `ended ${fmtDate(d.warrantyUntil)}` : `${fmtDate(d.warrantyUntil)} · ${n}d`}</span></button>`; }).join("")}</div></div>`;
+  if (!h) h = `<div class="empty">No network details yet. Open a router, switch, camera or console, tap <b>Network &amp; power</b>, and add its IP address and what it's plugged into.</div>`;
+  $("#netBody").innerHTML = h;
+}
+$("#netBody").addEventListener("click", async e => {
+  const o = e.target.closest("[data-open]"); if (o) return openItem(o.dataset.open);
+  if (e.target.closest("[data-copy]")) {
+    const rows = [["IP", "Device", "Hostname", "MAC", "Plugged into", "Port", "Place"], ...Object.values(S.items).filter(d => live(d) && (d.ip || d.mac)).sort((a, b) => (ipNum(a.ip) ?? 4e9) - (ipNum(b.ip) ?? 4e9))
+      .map(d => [d.ip || "", d.name, d.host || "", d.mac || "", (S.items[d.uplink] || {}).name || "", d.port || "", locName(d.locationId)])];
+    const tsv = rows.map(r => r.map(c => String(c).replace(/\t|\n/g, " ")).join("\t")).join("\n");
+    try { await navigator.clipboard.writeText(tsv); toast("Copied. Paste it into a spreadsheet."); } catch(err){ downloadCSV("tech-stock-network-" + today() + ".csv", rows); }
+  }
+});
+/* ---------- CSV (insurance list, network list) ---------- */
+function insuranceRows(){
+  const rows = [["Name","Department","Category","Brand / publisher","Model / edition","Serial number","Qty","Price paid","Bought on","Store","Warranty until","Room","Place","Status","Asset tag"]];
+  Object.values(S.items).filter(i => isTool(i) && i.status !== "retired").sort((a, b) => a.department.localeCompare(b.department) || a.name.localeCompare(b.name)).forEach(i => {
+    const p = i.purchase || {}, l = S.locs[i.locationId] || {};
+    rows.push([i.name, i.department, i.category, i.brand || "", i.model || "", i.serial || "", num(i.qty) || 1, p.price ?? "", p.date || "", p.store || "", i.warrantyUntil || "", l.room || "", l.name || "", STATUS[i.status] || "", i.code || ""]);
+  });
+  return rows;
+}
+function downloadCSV(name, rows){
+  const csv = rows.map(r => r.map(c => { const v = String(c ?? ""); return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; }).join(",")).join("\r\n");
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type:"text/csv" })); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+/* ---------- item detail ---------- */
+function openItem(id){
+  const it = S.items[id]; if (!it) return;
+  const loc = S.locs[it.locationId];
+  const facts = [];
+  const add = (k, v) => { if (v !== "" && v != null) facts.push(`<dt>${k}</dt><dd>${v}</dd>`); };
+  if (isTool(it)) {
+    let st = `<span class="pill ${isOverdue(it) ? "overdue" : it.status}">${isOverdue(it) ? "Overdue" : STATUS[it.status]}</span>`;
+    if (it.status === "loaned" && it.loan) st += ` with ${esc(it.loan.to)} since ${fmtDate(it.loan.since)}${it.loan.due ? `, due ${fmtDate(it.loan.due)}` : ""}`;
+    if (it.status === "away" && it.away) st += ` ${esc(it.away.where)} since ${fmtDate(it.away.since)}`;
+    add("Status", st);
+    if (num(it.qty) > 1) add("How many", num(it.qty));
+    if (isGame(it)) {
+      add("Format", esc(GAME_FORMATS[it.format] || ""));
+      const on = playsOn(it);
+      if (on.length) add("Plays on", on.map(c => `<button class="link" data-a="goto" data-f="${esc(c.id)}">${esc(c.name)}</button>`).join(", "));
+    }
+  } else {
+    add("Have", `<b>${esc(amtText(it).big)}</b> ${esc(it.unit === "count" ? "" : it.unit)} · low at ${esc(num(it.threshold))}${isLow(it) ? ` <span class="pill low">Low</span>` : ""}`);
+  }
+  add("Where", loc ? `${esc(loc.name)}${loc.room ? ` · ${esc(loc.room)}` : ""}` : `<span class="hint">Not assigned</span>`);
+  add(isGame(it) ? "Publisher" : "Brand", esc([it.brand, it.model].filter(Boolean).join(" · ")));
+  add("Serial", it.serial ? `<span class="mono">${esc(it.serial)}</span>` : "");
+  if (isDevice(it)) netFacts(it, add);
+  const p = it.purchase || {};
+  const price = isTool(it) ? p.price : it.price, store = isTool(it) ? p.store : it.store;
+  add("Bought", esc([money(price), store, p.date && fmtDate(p.date)].filter(Boolean).join(" · ")));
+  if (it.warrantyUntil) add("Warranty", `until ${fmtDate(it.warrantyUntil)}${it.warrantyUntil < today() ? ` <span class="pill missing">Expired</span>` : daysUntil(it.warrantyUntil) <= 60 ? ` <span class="pill repair">${daysUntil(it.warrantyUntil)} days left</span>` : ""}`);
+  if (it.manualUrl) add("Manual", `<a href="${esc(it.manualUrl)}" target="_blank" rel="noopener">Open manual</a>`);
+  add("Barcode", it.barcode ? `<span class="mono">${esc(it.barcode)}</span>` : "");
+  add("Notes", esc(it.notes || ""));
+
+  let actions = "";
+  if (isTool(it)) {
+    if (it.status === "available" || it.status === "spare") actions = `
+      <button class="btn" data-a="loan">Loan out</button><button class="btn ghost" data-a="away">Take away</button>
+      <button class="btn ghost" data-a="repair">Broken</button><button class="btn ghost" data-a="missing">Can't find it</button>`;
+    else actions = `<button class="btn full" data-a="back">${{ loaned:"Returned", away:"Back home", repair:"Fixed", missing:"Found it", retired:"Back in use" }[it.status] || "Available"}</button>
+      ${it.status !== "loaned" ? `<button class="btn ghost" data-a="loan">Loan out</button>` : ""}${it.status !== "repair" ? `<button class="btn ghost" data-a="repair">Broken</button>` : ""}${it.status !== "missing" ? `<button class="btn ghost" data-a="missing">Can't find it</button>` : ""}`;
+  } else {
+    const step = STEP_UNITS.has(it.unit);
+    actions = `${step ? `<button class="btn" data-a="dec">Used one</button>` : `<button class="btn" data-a="set">Update amount</button>`}
+      <button class="btn ghost" data-a="restock">Restocked +${esc(num(it.restock) || 1)}</button>`;
+  }
+  const replace = (isTool(it) && it.status !== "missing" ? `<button class="link" data-a="replace">${it.replace ? "Remove from shopping list" : "Add to shopping list"}</button>` : "")
+    + (isTool(it) && !isGame(it) && it.status === "available" ? `<button class="link" data-a="spare">Mark as spare</button>` : "")
+    + (isTool(it) && it.status === "spare" ? `<button class="link" data-a="back">In use</button>` : "")
+    + (isTool(it) && it.status !== "retired" ? `<button class="link" data-a="retire">${isGame(it) ? "Sold or gone" : "Retire"}</button>` : "");
+  openSheet(`<div class="ihead">${photoBtnHTML(it, "a")}<div class="main"><span class="tag">${esc(it.code || "")}</span><h2>${esc(it.name)}</h2><div class="meta"><span>${esc(it.department)} › ${esc(it.category)}</span></div></div></div>
+    ${(netIssues().byItem[it.id] || []).map(m => `<div class="issue ${m.sev === "warn" ? "warn" : ""}"><i>!</i><span>${esc(m.t)}</span></div>`).join("")}
+    <dl class="facts">${facts.join("")}</dl>
+    <div class="actions">${actions}</div>
+    <div class="minor"><button class="link" data-a="move">Move</button><button class="link" data-a="edit">Edit</button><button class="link" data-a="fill">Scan to fill details</button>${isDevice(it) ? `<button class="link" data-a="net">Network &amp; power</button>` : ""}<button class="link" data-a="label">Print label</button><button class="link" data-a="snap">${it.hasPhoto ? "Retake photo" : "Take photo"}</button>${replace}<button class="link" data-a="close" style="margin-left:auto">Close</button></div>`);
+  $("#sheetCard").onclick = e => {
+    const b = e.target.closest("[data-a]"); if (!b) return;
+    const cur = S.items[id]; if (!cur) return;
+    const a = b.dataset.a;
+    if (a === "close") return closeSheet();
+    if (a === "edit") return editItem(cur, false);
+    if (a === "move") return moveItem(cur);
+    if (a === "fill") return editItem(cur, false, { scan: true });
+    if (a === "goto") return openItem(b.dataset.f);
+    if (a === "net") return editItem(cur, false, { net: true });
+    if (a === "spare" || a === "retire") { setStatus(cur, a === "spare" ? "spare" : "retired"); toast(cur.name + (a === "spare" ? " marked as a spare" : " retired")); return openItem(id); }
+    if (a === "label") return openLabels({ items:[id] });
+    if (a === "photo") return openPhoto(id);
+    if (a === "snap") return takePhoto(id, () => openItem(id));
+    if (a === "loan") return loanItem(cur);
+    if (a === "away") return awayItem(cur);
+    if (a === "set") return setAmount(cur);
+    if (a === "repair" || a === "missing") { setStatus(cur, a); return openItem(id); }
+    if (a === "back") { setStatus(cur, "available"); toast(cur.name + " is available"); return openItem(id); }
+    if (a === "replace") { putItem({ ...cur, replace: !cur.replace }); toast(cur.replace ? "Removed from the list" : "Added to the shopping list"); return openItem(id); }
+    if (a === "dec") { putItem({ ...cur, amount: Math.max(0, num(cur.amount) - 1) }); lowToast(cur, S.items[id]); return openItem(id); }
+    if (a === "restock") { putItem({ ...cur, amount: num(cur.amount) + (num(cur.restock) || 1) }); toast("Restocked"); return openItem(id); }
+  };
+}
+function lowToast(before, after){ if (isLow(after) && !isLow(before)) toast(after.name + " added to the shopping list"); }
+function setStatus(it, status){
+  const n = { ...it, status };
+  if (status === "available") {
+    if (it.loan) n.loanHistory = [...(it.loanHistory || []), { ...it.loan, returned: today() }].slice(-8);
+    n.loan = null; n.away = null; n.replace = false;
+  }
+  if (status !== "loaned") n.loan = null;
+  if (status !== "away") n.away = null;
+  delete n.example;
+  putItem(n);
+  if (status === "missing") toast(it.name + " marked missing and added to the list");
+  if (status === "repair") toast(it.name + " marked as broken");
+}
+function borrowers(){
+  const set = new Set();
+  Object.values(S.items).forEach(i => { if (i.loan && i.loan.to) set.add(i.loan.to); (i.loanHistory || []).forEach(l => l.to && set.add(l.to)); });
+  return [...set];
+}
+function loanItem(it){
+  $("#borrowerList").innerHTML = borrowers().map(b => `<option value="${esc(b)}">`).join("");
+  openSheet(`<h2>Loan out ${esc(it.name)}</h2>
+    <div class="form">
+      <label class="full">Who has it<input type="text" id="l-to" list="borrowerList" placeholder="e.g. Mike next door"></label>
+      <label>Lent on<input type="date" id="l-since" value="${today()}"></label>
+      <label>Due back<input type="date" id="l-due" value="${addDays(today(), 14)}"></label>
+    </div>
+    <div class="row end" style="margin-top:14px"><button class="btn ghost" id="l-c">Cancel</button><button class="btn" id="l-s">Loan out</button></div>`);
+  $("#l-to").focus();
+  $("#l-c").onclick = () => openItem(it.id);
+  $("#l-s").onclick = () => {
+    const to = $("#l-to").value.trim(); if (!to) { $("#l-to").focus(); return toast("Add who has it"); }
+    putItem({ ...it, status:"loaned", away:null, loan:{ to, since: $("#l-since").value || today(), due: $("#l-due").value || "" } });
+    toast("Loaned to " + to); openItem(it.id);
+  };
+}
+function awayItem(it){
+  openSheet(`<h2>Take away ${esc(it.name)}</h2>
+    <div class="chips" style="flex-wrap:wrap">${["At work","At school","In the car","Traveling","At the cabin","Sent for repair"].map(w => `<button class="chip" data-w="${esc(w)}">${esc(w)}</button>`).join("")}</div>
+    <div class="form"><label class="full">Where is it<input type="text" id="w-where" value="At work"></label></div>
+    <div class="row end" style="margin-top:14px"><button class="btn ghost" id="w-c">Cancel</button><button class="btn" id="w-s">Save</button></div>`);
+  $("#sheetCard").querySelectorAll("[data-w]").forEach(b => b.onclick = () => $("#w-where").value = b.dataset.w);
+  $("#w-c").onclick = () => openItem(it.id);
+  $("#w-s").onclick = () => { putItem({ ...it, status:"away", loan:null, away:{ where: $("#w-where").value.trim() || "Away", since: today() } }); openItem(it.id); };
+}
+function locOptions(sel, allowNew = true){
+  const locs = Object.values(S.locs).sort((a, b) => (a.order || 0) - (b.order || 0) || a.name.localeCompare(b.name));
+  return `<option value="">Not assigned</option>` + locs.map(l => `<option value="${esc(l.id)}" ${l.id === sel ? "selected" : ""}>${esc(l.name)}${l.room ? " · " + esc(l.room) : ""}</option>`).join("") + (allowNew ? `<option value="__new">+ New place…</option>` : "");
+}
+function wireLocSelect(selId, newId_){
+  const sel = $(selId), box = $(newId_);
+  sel.onchange = () => { box.hidden = sel.value !== "__new"; if (!box.hidden) box.querySelector("input").focus(); };
+}
+function resolveLoc(selId, nameId){
+  const v = $(selId).value;
+  if (v !== "__new") return v;
+  const name = $(nameId).value.trim(); if (!name) return "";
+  const l = { id:newId("loc"), name, room:"", code:nextCode("loc"), order:Object.keys(S.locs).length + 1 };
+  S.locs[l.id] = l; return l.id;
+}
+function moveItem(it){
+  openSheet(`<h2>Move ${esc(it.name)}</h2>
+    <div class="form"><label class="full">New place<select id="m-loc">${locOptions(it.locationId)}</select></label>
+    <label class="full" id="m-newbox" hidden>Name of the new place<input type="text" id="m-new" placeholder="e.g. Office desk, cable bin"></label></div>
+    <div class="row end" style="margin-top:14px"><button class="btn ghost" id="m-c">Cancel</button><button class="btn" id="m-s">Move</button></div>`);
+  wireLocSelect("#m-loc", "#m-newbox");
+  $("#m-c").onclick = () => openItem(it.id);
+  $("#m-s").onclick = () => { const loc = resolveLoc("#m-loc", "#m-new"); putItem({ ...it, locationId: loc }); toast("Moved to " + (locName(loc) || "Not assigned")); openItem(it.id); };
+}
+function setAmount(it){
+  openSheet(`<h2>${esc(it.name)}</h2><p class="lede">How much is left?</p>
+    <div class="row"><input type="number" id="sa" inputmode="decimal" step="any" min="0" value="${esc(num(it.amount))}" style="flex:1"><span class="mono">${esc(it.unit)}</span></div>
+    <div class="row end" style="margin-top:14px"><button class="btn ghost" id="sa-c">Cancel</button><button class="btn" id="sa-s">Update</button></div>`);
+  $("#sa-c").onclick = () => openItem(it.id);
+  $("#sa-s").onclick = () => { const n = { ...it, amount: num($("#sa").value) }; putItem(n); lowToast(it, n); openItem(it.id); };
+}
+
+/* ---------- add / edit form ---------- */
+let pendingPhoto = null;
+const BAR_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M8 8v8M11 8v8M13.5 8v8M16 8v8"/></svg>`;
+let lastFill = "";
+function editItem(it, isNew, auto){
+  pendingPhoto = null;
+  it = { kind:"tool", qty:1, status:"available", unit:"count", amount:1, threshold:1, restock:1, department:"", category:"", ...it };
+  if (!it.department || !validCat(it.department, it.category)) {
+    const g = it.name ? guessCategory(it.name) : null;
+    if (g) { it.department = g.department; it.category = g.category; if (isNew && !it.kindLocked) it.kind = g.kind; }
+    else { it.department = it.department && DEPTS.includes(it.department) ? it.department : "Other"; it.category = catsOf(it.department)[0].name; }
+  }
+  const p = it.purchase || {};
+  const deptOpts = DEPTS.map(d => `<option ${d === it.department ? "selected" : ""}>${esc(d)}</option>`).join("");
+  openSheet(`<h2>${isNew ? "Add something" : "Edit " + esc(it.name)}</h2>
+    <div class="form">
+      <div class="full seg" role="group" aria-label="Kind"><button type="button" data-kind="tool" aria-pressed="${it.kind === "tool"}">Device, game or disc</button><button type="button" data-kind="supply" aria-pressed="${it.kind === "supply"}">Supply (cables, batteries)</button></div>
+      <div class="full fillbar">
+        <button type="button" class="btn" id="f-scan">${BAR_SVG}Scan barcode</button>
+        <label class="btn ghost" for="f-idfile">${CAM_SVG}Identify from photo</label>
+        <input type="file" id="f-idfile" accept="image/*" capture="environment" hidden>
+      </div>
+      <div class="full viewer" id="f-viewer" hidden>
+        <video id="f-video" playsinline muted autoplay></video>
+        <div class="aim" aria-hidden="true"></div>
+        <div class="camtools"><button type="button" class="camtool" id="f-torch" aria-pressed="false" hidden>Light</button><button type="button" class="camtool" id="f-zoom" hidden>1×</button></div>
+        <button type="button" class="btn camstop" id="f-camstop">Cancel scan</button>
+      </div>
+      <p class="full hint" id="f-msg" style="margin:0">${isNew ? `Scan the barcode on the box or case, or snap a photo, to fill in the details${CFG.apiKey ? "" : ". Identifying from a photo needs a Claude API key in Settings; without one the photo is checked for a barcode"}.` : ""}</p>
+      <div class="full suggbar" id="f-sugg" hidden></div>
+      <div class="full row" style="align-items:center">
+        ${it.hasPhoto ? `<img id="f-photo" ${imgSrc(it)} alt="" style="width:64px;height:64px;border-radius:8px;object-fit:cover">` : `<img id="f-photo" alt="" hidden style="width:64px;height:64px;border-radius:8px;object-fit:cover">`}
+        <label class="btn ghost sm" for="f-file">${it.hasPhoto ? "Change photo" : "Add photo"}</label><input type="file" id="f-file" accept="image/*" capture="environment" hidden>
+      </div>
+      <label class="full">Name<input type="text" id="f-name" value="${esc(it.name || "")}" placeholder="e.g. Wi-Fi 7 router, Mario Kart World, 65&quot; OLED TV"></label>
+      <label>Department<select id="f-dept">${deptOpts}</select></label>
+      <label>Category<select id="f-cat"></select></label>
+      <label><span id="f-brandlbl">Brand</span><input type="text" id="f-brand" value="${esc(it.brand || "")}"></label>
+      <label><span id="f-modellbl">Model</span><input type="text" id="f-model" value="${esc(it.model || "")}"></label>
+      <label class="full">Place<select id="f-loc">${locOptions(it.locationId)}</select></label>
+      <label class="full" id="f-newbox" hidden>Name of the new place<input type="text" id="f-new" placeholder="e.g. Office desk, cable bin"></label>
+
+      <div class="full form" data-for="tool" style="grid-column:1/-1">
+        <label data-only="game">Format<select id="f-format"><option value="">—</option>${Object.entries(GAME_FORMATS).map(([k, v]) => `<option value="${k}" ${k === it.format ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+        <label>How many<input type="number" id="f-qty" min="1" step="1" inputmode="numeric" value="${esc(num(it.qty) || 1)}"></label>
+        <label data-only="device">Serial number<span class="inbtn"><input type="text" id="f-serial" class="mono" value="${esc(it.serial || "")}" autocapitalize="characters"><button type="button" class="btn ghost" data-scanto="#f-serial" aria-label="Scan the serial number barcode">Scan</button></span></label>
+        <label>Price paid ($)<input type="number" id="f-tprice" step="0.01" min="0" inputmode="decimal" value="${esc(p.price ?? "")}"></label>
+        <label>Bought on<input type="date" id="f-tdate" value="${esc(p.date || "")}"></label>
+        <label>Store<input type="text" id="f-tstore" value="${esc(p.store || "")}" placeholder="e.g. Lowe's"></label>
+        <label data-only="device">Warranty until<input type="date" id="f-warranty" value="${esc(it.warrantyUntil || "")}"></label>
+        <label class="full" data-only="device">Manual or support link<input type="url" id="f-manual" value="${esc(it.manualUrl || "")}" placeholder="https://"></label>
+        <details class="full netbox" data-only="device" id="f-netbox" ${auto && auto.net || it.ip || it.mac || it.uplink || it.poeW || it.poeBudget || it.channels || it.nvr || /^(Networking|Security Cameras)/.test(it.department) ? "open" : ""}>
+          <summary>Network &amp; power</summary>
+          <div class="form">
+            <label>IP address<input type="text" id="f-ip" class="mono" inputmode="decimal" value="${esc(it.ip || "")}" placeholder="192.168.1.20"></label>
+            <label>MAC address<span class="inbtn"><input type="text" id="f-mac" class="mono" value="${esc(it.mac || "")}" placeholder="AA:BB:CC:DD:EE:FF" autocapitalize="characters"><button type="button" class="btn ghost" data-scanto="#f-mac" aria-label="Scan the MAC address barcode">Scan</button></span></label>
+            <label>Hostname<input type="text" id="f-host" class="mono" value="${esc(it.host || "")}" autocapitalize="off"></label>
+            <label>Firmware<input type="text" id="f-fw" class="mono" value="${esc(it.firmware || "")}"></label>
+            <label>Plugged into<select id="f-uplink">${deviceOptions(it.uplink, it.id)}</select></label>
+            <label>Port<input type="text" id="f-port" value="${esc(it.port || "")}" placeholder="e.g. 3"></label>
+            <label>PoE it draws (W)<input type="number" id="f-poew" min="0" step="0.1" inputmode="decimal" value="${esc(it.poeW ?? "")}" placeholder="powered by PoE"></label>
+            <label>PoE budget (W)<input type="number" id="f-poeb" min="0" step="1" inputmode="decimal" value="${esc(it.poeBudget ?? "")}" placeholder="switches, NVRs"></label>
+            <label>Recorded by<select id="f-nvr">${deviceOptions(it.nvr, it.id, true)}</select></label>
+            <label>NVR channel<input type="text" id="f-chan" inputmode="numeric" value="${esc(it.channel || "")}" placeholder="cameras"></label>
+            <label>Camera channels<input type="number" id="f-chans" min="0" step="1" inputmode="numeric" value="${esc(it.channels ?? "")}" placeholder="NVRs only"></label>
+            <p class="hint" style="margin:0;align-self:end">Leave anything blank that doesn't apply.</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="full form" data-for="supply" style="grid-column:1/-1">
+        <label>Measured in<select id="f-unit">${UNITS.map(u => `<option ${u === it.unit ? "selected" : ""}>${u}</option>`).join("")}</select></label>
+        <label>Have now<input type="number" id="f-amount" step="any" min="0" inputmode="decimal" value="${esc(num(it.amount))}"></label>
+        <label>Low at or below<input type="number" id="f-threshold" step="any" min="0" inputmode="decimal" value="${esc(num(it.threshold))}"></label>
+        <label>Usually buy<input type="number" id="f-restock" step="any" min="0" inputmode="decimal" value="${esc(num(it.restock) || 1)}"></label>
+        <label>Price ($)<input type="number" id="f-sprice" step="0.01" min="0" inputmode="decimal" value="${esc(it.price ?? "")}"></label>
+        <label>Store<input type="text" id="f-sstore" value="${esc(it.store || "")}" placeholder="e.g. Home Depot"></label>
+      </div>
+
+      <label class="full">Barcode<input type="text" id="f-barcode" class="mono" value="${esc(it.barcode || "")}"></label>
+      <label class="full">Notes<textarea id="f-notes">${esc(it.notes || "")}</textarea></label>
+    </div>
+    <div class="row between" style="margin-top:14px">
+      <div>${isNew ? "" : `<button class="btn danger" id="f-del">Delete</button>`}</div>
+      <div class="row"><button class="btn ghost" id="f-cancel">Cancel</button>${isNew ? `<button class="btn ghost" id="f-next">Save &amp; next</button>` : ""}<button class="btn" id="f-save">${isNew ? "Add" : "Save"}</button></div>
+    </div>`);
+
+  let kind = it.kind;
+  const showFor = () => {
+    const game = isGame({ department: $("#f-dept").value });
+    $("#sheetCard").querySelectorAll("[data-only]").forEach(el => el.hidden = (el.dataset.only === "game") !== game);
+    $("#f-brandlbl").textContent = game ? "Publisher" : "Brand"; $("#f-modellbl").textContent = game ? "Edition" : "Model";
+    if (/^(Networking|Security Cameras)/.test($("#f-dept").value) && $("#f-netbox")) $("#f-netbox").open = true;
+  };
+  const setKind = k => { kind = k; $("#sheetCard").querySelectorAll("[data-kind]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.kind === k))); $("#sheetCard").querySelectorAll("[data-for]").forEach(el => el.hidden = el.dataset.for !== k); };
+  const fillCats = (dept, sel) => { $("#f-cat").innerHTML = catsOf(dept).map(c => `<option ${c.name === sel ? "selected" : ""}>${esc(c.name)}</option>`).join(""); showFor(); };
+  setKind(kind); fillCats(it.department, it.category);
+  $("#sheetCard").querySelectorAll("[data-kind]").forEach(b => b.onclick = () => setKind(b.dataset.kind));
+  /* Scan the barcode printed next to a serial number or MAC address on a device label. */
+  $("#sheetCard").querySelectorAll("[data-scanto]").forEach(b => b.onclick = () => {
+    const target = $(b.dataset.scanto);
+    msg(`Point the camera at the ${target.id === "f-mac" ? "MAC" : "serial number"} barcode on the device's label.`);
+    $("#f-viewer").scrollIntoView({ block: "nearest" });
+    startCam(FORM_CAM, code => {
+      const v = target.id === "f-mac" ? normMac(code) : cleanSerial(code);
+      const prev = target.value; target.value = v;
+      markSugg(target.closest("label"), () => { target.value = prev; }, target);
+      msg(`Read <span class="mono">${esc(v)}</span>. Check it matches the label.`);
+      updateBar();
+    });
+  });
+  $("#f-dept").onchange = () => { fillCats($("#f-dept").value); if (isNew) setKind(kindOf($("#f-dept").value, $("#f-cat").value)); };
+  $("#f-cat").onchange = () => { if (isNew) setKind(kindOf($("#f-dept").value, $("#f-cat").value)); };
+  wireLocSelect("#f-loc", "#f-newbox");
+  if (it.photoBlob) { usePhoto(it.photoBlob); }
+  $("#f-file").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) usePhoto(f); };
+  async function usePhoto(blob){
+    try { pendingPhoto = { blob, thumb: await makeThumb(blob) }; $("#f-photo").src = pendingPhoto.thumb; $("#f-photo").hidden = false; }
+    catch(e){ toast("That photo couldn't be opened."); }
+  }
+  /* ---- suggestions: filled fields are highlighted; keep, edit, or ignore each one ---- */
+  let suggs = [], suggSource = "";
+  const card = $("#sheetCard");
+  function updateBar(){
+    const bar = $("#f-sugg"); if (!bar) return;
+    bar.hidden = !suggs.length;
+    if (!suggs.length) return;
+    const n = new Set(suggs.map(x => x.box)).size;
+    bar.innerHTML = `<span class="grow"><b>${n} field${n === 1 ? "" : "s"} filled</b> from ${esc(suggSource)}. Keep them, edit them, or tap Ignore on any.</span><button type="button" class="link" data-sg="keep">Keep all</button><button type="button" class="link" data-sg="ignore">Ignore all</button>`;
+  }
+  function clearSugg(entry){
+    suggs = suggs.filter(e => e !== entry);
+    if (!suggs.some(e => e.box === entry.box)) { entry.box.classList.remove("sugg"); const x = entry.box.querySelector(":scope > .ignore"); if (x) x.remove(); }
+    updateBar();
+  }
+  function markSugg(box, revert, watch, evt = "input"){
+    if (!box) return;
+    if (suggs.some(e => e.box === box && e.revert === revert)) return;
+    const prior = suggs.find(e => e.box === box);
+    const entry = { box, revert: prior ? prior.revert : revert };
+    if (prior) suggs = suggs.filter(e => e !== prior);
+    box.classList.add("sugg");
+    let x = box.querySelector(":scope > .ignore");
+    if (!x) { x = document.createElement("button"); x.type = "button"; x.className = "ignore"; x.textContent = "Ignore"; box.appendChild(x); }
+    x.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); entry.revert(); suggs.filter(e => e.revert === entry.revert).forEach(clearSugg); };
+    if (watch) watch.addEventListener(evt, () => { if (suggs.includes(entry)) clearSugg(entry); }, { once:true });
+    suggs.push(entry);
+  }
+  card.onclick = e => {
+    const d = e.target.closest("[data-dup]"); if (d) return openItem(d.dataset.dup);
+    const b = e.target.closest("[data-sg]"); if (!b) return;
+    if (b.dataset.sg === "ignore") [...suggs].reverse().forEach(x => x.revert());
+    [...suggs].forEach(clearSugg);
+  };
+  function applySuggest(sug, source){
+    if (!$("#f-name")) return;
+    suggSource = source;
+    const set = (sel, val) => {
+      const el = $(sel); if (!el || val == null || val === "") return;
+      if (el.tagName === "SELECT" && ![...el.options].some(o => o.value === String(val))) return;
+      const prev = el.value; if (String(prev) === String(val)) return;
+      el.value = val;
+      markSugg(el.closest("label"), () => { el.value = prev; }, el, el.tagName === "SELECT" ? "change" : "input");
+    };
+    if (sug.kind && sug.kind !== kind) { const pk = kind; setKind(sug.kind); const seg = card.querySelector(".seg"); markSugg(seg, () => setKind(pk), seg, "click"); }
+    set("#f-name", sug.name); set("#f-brand", sug.brand); set("#f-model", sug.model);
+    if (sug.department && validCat(sug.department, sug.category) && ($("#f-dept").value !== sug.department || $("#f-cat").value !== sug.category)) {
+      const pd = $("#f-dept").value, pc = $("#f-cat").value;
+      $("#f-dept").value = sug.department; fillCats(sug.department, sug.category);
+      const rev = () => { $("#f-dept").value = pd; fillCats(pd, pc); };
+      markSugg($("#f-dept").closest("label"), rev, $("#f-dept"), "change");
+      markSugg($("#f-cat").closest("label"), rev, $("#f-cat"), "change");
+    }
+    set("#f-format", sug.format); set("#f-serial", sug.serial); set("#f-mac", sug.mac); set("#f-unit", sug.unit); set("#f-barcode", sug.barcode);
+    updateBar();
+  }
+  const msg = h => { if ($("#f-msg")) $("#f-msg").innerHTML = h; };
+  async function fillFromCode(code, frame){
+    lastFill = "scan";
+    code = String(code).trim();
+    if (/^TS-(IT|LOC)-\d+$/i.test(code)) return msg("That's one of your Tech Stock asset tags, not a product barcode. Scan the barcode on the box or case.");
+    const dup = findByBarcode(code);
+    const dupNote = dup && dup.id !== it.id ? `You already have <b>${esc(dup.name)}</b> with this barcode. <button type="button" class="link" data-dup="${esc(dup.id)}">Open it</button> · ` : "";
+    msg(dupNote + `Barcode <span class="mono">${esc(code)}</span>. Looking it up…`);
+    applySuggest({ barcode: code }, "the barcode");
+    const img = frame ? await frame : null;
+    const p = await lookupProduct(code);
+    if (!$("#f-name")) return;
+    if (p) {
+      const g = (p.hint && guessCategory(p.hint.split(">").pop())) || guessCategory([p.name, p.hint].join(" "));
+      let sug = { name: cleanTitle(p.name, p.brand, p.model), brand: p.brand, model: p.model, ...(g ? { department: g.department, category: g.category, kind: g.kind } : {}) }, source = p.source;
+      if (CFG.apiKey) {
+        msg(dupNote + `Found on ${esc(p.source)}. Asking Claude to tidy it up…`);
+        try { const c = await classifyTitle(p.name, p.hint); sug = { ...sug, ...Object.fromEntries(Object.entries(c).filter(([k, v]) => v)) }; source += " and Claude"; } catch(e){}
+      }
+      if (!$("#f-name")) return;
+      applySuggest(sug, source);
+      return msg(dupNote + `Found on ${esc(p.source)}.`);
+    }
+    if (CFG.apiKey && img) {
+      msg(dupNote + "Not in the product databases. Asking Claude to read the label…");
+      try { const r = await identifyPhoto(img, code); applySuggest(identityToSug(r, code), "Claude reading the label"); return msg(dupNote + "Read from the label by Claude."); }
+      catch(err){ return msg(dupNote + esc((err && err.message) || "Claude couldn't read the label.")); }
+    }
+    msg(dupNote + `Barcode <span class="mono">${esc(code)}</span> isn't in the free product databases. Type the name${CFG.apiKey ? ", or use Identify from photo" : ""}.`);
+  }
+  async function fillFromPhoto(file){
+    lastFill = "photo";
+    if (!pendingPhoto && !it.hasPhoto) usePhoto(file);
+    msg("Checking the photo…");
+    const code = await decodeImage(file);
+    if (CFG.apiKey) {
+      msg("Asking Claude what this is…");
+      try {
+        const r = await identifyPhoto(file, code);
+        if (!$("#f-name")) return;
+        applySuggest(identityToSug(r, code), "Claude (photo)");
+        return msg("Identified from the photo.");
+      } catch(err){ msg(esc((err && err.message) || "Claude couldn't identify that photo.")); }
+    }
+    if (code) return fillFromCode(code, null);
+    if (!CFG.apiKey) msg("No barcode found in that photo. To identify items from a picture, add a Claude API key in Settings.");
+  }
+  $("#f-scan").onclick = () => startCam(FORM_CAM, fillFromCode);
+  $("#f-camstop").onclick = () => { stopCam(); msg(""); };
+  $("#f-torch").onclick = toggleTorch;
+  $("#f-zoom").onclick = cycleZoom;
+  $("#f-idfile").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) { stopCam(); fillFromPhoto(f); } };
+
+  $("#f-cancel").onclick = () => isNew ? closeSheet() : openItem(it.id);
+  if (!isNew) $("#f-del").onclick = () => { $("#f-del").textContent = "Tap again to delete"; $("#f-del").onclick = () => { const nm = it.name; dropItem(it.id); closeSheet(); toast("Deleted " + nm); }; };
+  async function doSave(){
+    const name = $("#f-name").value.trim(); if (!name) { $("#f-name").focus(); toast("Give it a name"); return null; }
+    const n = { ...it, kind, name, department: $("#f-dept").value, category: $("#f-cat").value, brand: $("#f-brand").value.trim(), model: $("#f-model").value.trim(),
+      locationId: resolveLoc("#f-loc", "#f-new"), barcode: $("#f-barcode").value.replace(/\s/g, ""), notes: $("#f-notes").value.trim() };
+    delete n.photoBlob; delete n.kindLocked; delete n.example;
+    if (kind === "tool") {
+      const nz = v => v === "" ? null : num(v);
+      Object.assign(n, { qty: Math.max(1, Math.round(num($("#f-qty").value)) || 1),
+        purchase: { price: $("#f-tprice").value === "" ? null : num($("#f-tprice").value), date: $("#f-tdate").value, store: $("#f-tstore").value.trim() } });
+      if (isGame(n)) Object.assign(n, { format: $("#f-format").value });
+      else Object.assign(n, { serial: cleanSerial($("#f-serial").value), warrantyUntil: $("#f-warranty").value, manualUrl: $("#f-manual").value.trim(),
+        ip: $("#f-ip").value.trim(), mac: normMac($("#f-mac").value), host: $("#f-host").value.trim(), firmware: $("#f-fw").value.trim(),
+        uplink: $("#f-uplink").value, port: $("#f-port").value.trim(), poeW: nz($("#f-poew").value), poeBudget: nz($("#f-poeb").value),
+        nvr: $("#f-nvr").value, channel: $("#f-chan").value.trim(), channels: nz($("#f-chans").value) });
+      if (n.ip && ipNum(n.ip) == null) { $("#f-netbox").open = true; $("#f-ip").focus(); toast("That IP address doesn't look right (like 192.168.1.20)"); return null; }
+      n.status = n.status || "available";
+    } else {
+      const price = $("#f-sprice").value === "" ? null : num($("#f-sprice").value);
+      Object.assign(n, { unit: $("#f-unit").value, amount: num($("#f-amount").value), threshold: num($("#f-threshold").value), restock: num($("#f-restock").value) || 1, store: $("#f-sstore").value.trim() });
+      if (price != null && price !== it.price) n.priceHistory = [...(it.priceHistory || []), { p: price, d: today(), s: n.store }].slice(-6);
+      n.price = price;
+    }
+    if (isNew) { n.id = newId("it"); n.code = nextCode("it"); }
+    if (pendingPhoto) { $("#f-save").disabled = true; Object.assign(n, await storePhoto(n.id, pendingPhoto.thumb, it.photoUrl)); }
+    stopCam();
+    putItem(n); toast(isNew ? "Added " + n.name : "Saved");
+    return n;
+  }
+  $("#f-save").onclick = async () => { const n = await doSave(); if (n) openItem(n.id); };
+  if (isNew) $("#f-next").onclick = async () => { const n = await doSave(); if (n) editItem({ locationId: n.locationId }, true, lastFill === "scan" ? { scan: true } : null); };
+
+  if (auto && auto.net) setTimeout(() => { const nb = $("#f-netbox"); if (nb) { nb.open = true; nb.scrollIntoView({ block: "start" }); } }, 50);
+  if (auto && auto.scan) startCam(FORM_CAM, fillFromCode);
+  else if (auto && auto.code) fillFromCode(auto.code, auto.frame);
+  else if (auto && auto.photo) fillFromPhoto(auto.photo);
+}
+
+$("#addBtn").onclick = () => editItem({ name: S.q.trim(), department: S.dept !== "All" ? S.dept : "", category: S.cat !== "All" ? S.cat : "" }, true);
+
+/* ---------- garage interactions ---------- */
+/* ---------- picture tiles & gallery ---------- */
+const VIEW_KEY = "techstock.view";
+try { S.view = localStorage.getItem(VIEW_KEY) === "tiles" ? "tiles" : "list"; } catch(e){ S.view = "list"; }
+function setView(v){ S.view = v; try { localStorage.setItem(VIEW_KEY, v); } catch(e){} renderGarage(); }
+$("#vw-list").onclick = () => setView("list");
+$("#vw-tiles").onclick = () => setView("tiles");
+const picHTML = it => it.hasPhoto ? `<img ${imgSrc(it)} alt="" loading="lazy">` : `<span aria-hidden="true">${esc(initials(it.category || it.name))}</span>`;
+function statusBadge(it){
+  if (isTool(it)) return isOverdue(it) ? `<span class="pill overdue">Overdue</span>` : it.status && it.status !== "available" ? `<span class="pill ${it.status}">${STATUS[it.status]}</span>` : (netIssues().byItem[it.id] || []).length ? `<span class="pill missing">Network</span>` : "";
+  return isLow(it) ? `<span class="pill low">Low</span>` : "";
+}
+function tileSub(it){
+  if (!isTool(it)) { const a = amtText(it); return `${a.big} ${a.small}`; }
+  if (it.status === "loaned" && it.loan) return "With " + it.loan.to;
+  return locName(it.locationId) || it.category;
+}
+function pictureTileHTML(it){
+  return `<button class="tile ${gone(it) ? "gone" : ""}" data-tile="${esc(it.id)}" aria-label="${esc(it.name)}">
+    <div class="pic">${picHTML(it)}</div><span class="tb">${statusBadge(it)}</span>
+    <div class="tn">${esc(it.name)}</div><div class="ta">${esc(tileSub(it))}</div></button>`;
+}
+function slideHTML(it){
+  const loc = locName(it.locationId);
+  const bits = [isTool(it) ? (num(it.qty) > 1 ? "×" + num(it.qty) : "") : `<b>${esc(amtText(it).big)}</b> ${esc(amtText(it).small)}`,
+    statusBadge(it) || (isTool(it) ? `<span class="pill available">Available</span>` : ""),
+    esc(it.department + " › " + it.category), loc ? "📍 " + esc(loc) : "", esc([it.brand, it.model].filter(Boolean).join(" ")), it.ip ? `<span class="mono">${esc(it.ip)}</span>` : ""].filter(Boolean);
+  const loanLine = it.status === "loaned" && it.loan ? `<p class="hint" style="margin:4px 0 0">With ${esc(it.loan.to)} since ${fmtDate(it.loan.since)}${it.loan.due ? `, due ${fmtDate(it.loan.due)}` : ""}</p>` : "";
+  return `<section class="slide" data-slide="${esc(it.id)}">
+    <div class="big">${picHTML(it)}</div>
+    <div><h2>${esc(it.name)}</h2><div class="meta">${bits.map(b => `<span>${b}</span>`).join("")}</div>${loanLine}</div>
+    <div class="row">
+      ${isTool(it) ? "" : STEP_UNITS.has(it.unit) ? `<button class="btn ghost" data-g="dec">Used one</button><button class="btn ghost" data-g="inc">Added one</button>` : ""}
+      <button class="btn ghost" data-g="snap">${it.hasPhoto ? "Retake photo" : "Take photo"}</button>
+      <button class="btn" data-g="open">Open item</button>
+      <button class="link" data-g="list">Show in list</button>
+    </div></section>`;
+}
+let gIds = [];
+function openGallery(id){
+  gIds = (S.shown || []).filter(x => S.items[x]);
+  if (!gIds.length) return;
+  $("#g-track").innerHTML = gIds.map(x => slideHTML(S.items[x])).join("");
+  fillPhotos($("#g-track"));
+  $("#gallery").hidden = false; document.body.style.overflow = "hidden";
+  const i = Math.max(0, gIds.indexOf(id)), tr = $("#g-track");
+  tr.scrollLeft = i * tr.clientWidth;
+  gCount();
+}
+const gIndex = () => { const tr = $("#g-track"); return Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)); };
+function gCount(){ $("#g-count").textContent = `${gIndex() + 1} / ${gIds.length}`; }
+function gGo(d){ const tr = $("#g-track"); const i = Math.min(gIds.length - 1, Math.max(0, gIndex() + d)); tr.scrollTo({ left: i * tr.clientWidth, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); }
+function closeGallery(){ $("#gallery").hidden = true; $("#g-track").innerHTML = ""; document.body.style.overflow = ""; }
+function refreshSlide(id){ const sl = document.querySelector(`#g-track [data-slide="${CSS.escape(id)}"]`); if (sl && S.items[id]) { sl.outerHTML = slideHTML(S.items[id]); fillPhotos($("#g-track")); } }
+$("#g-track").addEventListener("scroll", () => gCount(), { passive: true });
+$("#g-prev").onclick = () => gGo(-1); $("#g-next").onclick = () => gGo(1);
+$("#g-close").onclick = closeGallery;
+document.addEventListener("keydown", e => {
+  if ($("#gallery").hidden || !$("#sheet").hidden) return;
+  if (e.key === "ArrowRight") gGo(1); else if (e.key === "ArrowLeft") gGo(-1); else if (e.key === "Escape") closeGallery();
+});
+$("#g-track").addEventListener("click", e => {
+  const b = e.target.closest("[data-g]"); if (!b) return;
+  const id = b.closest("[data-slide]").dataset.slide, it = S.items[id]; if (!it) return;
+  const a = b.dataset.g;
+  if (a === "open") { closeGallery(); return openItem(id); }
+  if (a === "snap") return takePhoto(id, () => refreshSlide(id));
+  if (a === "list") {
+    closeGallery(); setView("list");
+    const row = document.querySelector(`#shelf .item[data-id="${CSS.escape(id)}"]`);
+    if (row) { row.scrollIntoView({ block: "center" }); row.classList.add("flash"); setTimeout(() => row.classList.remove("flash"), 1600); }
+    return;
+  }
+  const n = { ...it, amount: Math.max(0, num(it.amount) + (a === "inc" ? 1 : -1)) }; delete n.example;
+  putItem(n); lowToast(it, n); refreshSlide(id);
+});
+
+$("#shelf").addEventListener("click", e => {
+  const t = e.target.closest("[data-tile]"); if (t) return openGallery(t.dataset.tile);
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const id = b.closest(".item").dataset.id, it = S.items[id]; if (!it) return;
+  const a = b.dataset.act;
+  if (rowPhotoAct(a, id)) return;
+  if (a === "open") return openItem(id);
+  if (a === "set") return setAmount(it);
+  const n = { ...it, amount: Math.max(0, num(it.amount) + (a === "inc" ? 1 : -1)) }; delete n.example;
+  putItem(n); lowToast(it, n);
+});
+$("#answer").addEventListener("click", e => { if (e.target.closest("[data-act=addFromSearch]")) $("#addBtn").click(); });
+document.querySelector(".summary").addEventListener("click", e => { const b = e.target.closest("[data-f]"); if (!b) return; S.f = S.f === b.dataset.f ? "all" : b.dataset.f; renderGarage(); });
+$("#depts").addEventListener("click", e => { const b = e.target.closest("[data-dept]"); if (!b) return; S.dept = b.dataset.dept; S.cat = "All"; renderGarage(); });
+$("#cats").addEventListener("click", e => { const b = e.target.closest("[data-cat]"); if (!b) return; S.cat = b.dataset.cat; renderGarage(); });
+$("#q").addEventListener("input", e => { S.q = e.target.value; renderGarage(); });
+$("#clearEx").onclick = () => {
+  Object.values(S.items).forEach(i => { if (i.example) { delete S.items[i.id]; photoDel(i.id); } });
+  Object.values(S.locs).forEach(l => { if (l.example && !Object.values(S.items).some(i => i.locationId === l.id)) delete S.locs[l.id]; });
+  saveAll(); renderAll(); toast("Examples removed");
+};
+
+/* ---------- places ---------- */
+const LOC_KINDS = { rack:"Network rack", media:"TV stand / media console", shelf:"Shelf", desk:"Desk", closet:"Closet or cabinet", bins:"Bins & drawers", mount:"Wall or ceiling mount", outdoor:"Outdoors" };
+function locKind(l){
+  if (l.kind && LOC_KINDS[l.kind]) return l.kind;
+  const n = (l.name + " " + (l.room || "")).toLowerCase();
+  if (/rack|network|server/.test(n)) return "rack"; if (/tv|media|entertainment|console/.test(n)) return "media"; if (/desk|office/.test(n)) return "desk";
+  if (/bin|drawer|tote|box/.test(n)) return "bins"; if (/ceiling|mount/.test(n)) return "mount"; if (/outside|outdoor|porch|yard|eave|driveway/.test(n)) return "outdoor";
+  if (/closet|cabinet/.test(n)) return "closet";
+  return "shelf";
+}
+const locRoom = l => String(l.room || l.area || "").trim() || "Other";
+const rooms = () => [...new Set(Object.values(S.locs).map(locRoom))].sort((a, b) => a === "Other" ? 1 : b === "Other" ? -1 : a.localeCompare(b));
+function itemsIn(locId){ return Object.values(S.items).filter(i => (i.locationId || "") === locId).sort((a, b) => a.name.localeCompare(b.name)); }
+function renderPlaces(){
+  const locs = Object.values(S.locs).sort((a, b) => (a.order || 0) - (b.order || 0) || a.name.localeCompare(b.name));
+  const un = itemsIn("");
+  $("#locList").innerHTML = (locs.length ? locs.map(l => {
+    const its = itemsIn(l.id), miss = its.filter(i => i.status === "missing").length;
+    return `<button class="loc" data-loc="${esc(l.id)}"><div style="min-width:0"><div class="name">${esc(l.name)}${l.example ? ` <span class="pill ex">Example</span>` : ""}</div><div class="meta"><span>${esc(locRoom(l))}</span><span>${esc(LOC_KINDS[locKind(l)])}</span><span class="mono">${esc(l.code)}</span>${miss ? `<span class="pill missing">${miss} missing</span>` : ""}</div></div><span class="count">${its.length}<small>items</small></span></button>`;
+  }).join("") : `<div class="empty">No places yet. Add your rack, TV stand, desk and game shelf, then print a tag for each.</div>`)
+  + (un.length ? `<button class="loc" data-loc=""><div><div class="name">Not assigned</div><div class="meta"><span>Items without a place</span></div></div><span class="count">${un.length}<small>items</small></span></button>` : "");
+}
+$("#locList").addEventListener("click", e => { const b = e.target.closest("[data-loc]"); if (b) openLoc(b.dataset.loc); });
+$("#addLoc").onclick = () => editLoc(null);
+$("#printLabels").onclick = () => openLabels({});
+function openLoc(id){
+  const l = S.locs[id], its = itemsIn(id);
+  openSheet(`<div class="ihead" style="grid-template-columns:1fr"><div class="main">${l ? `<span class="tag">${esc(l.code)}</span>` : ""}<h2>${esc(l ? l.name : "Not assigned")}</h2>${l ? `<div class="meta"><span>${esc(locRoom(l))}</span><span>${esc(LOC_KINDS[locKind(l)])}</span></div>` : ""}</div></div>
+    <div class="shelf">${its.length ? its.map(rowHTML).join("") : `<div class="empty">Nothing here yet.</div>`}</div>
+    ${l ? `<div class="actions" style="margin-top:14px"><button class="btn" data-a="audit" ${its.length ? "" : "disabled"}>Check what's here</button><button class="btn ghost" data-a="label">Print label</button></div>
+    <div class="minor"><button class="link" data-a="rename">Edit place</button><button class="link" data-a="map">Show room</button>${its.length ? "" : `<button class="link" data-a="delete" style="color:var(--bad)">Delete place</button>`}<button class="link" data-a="close" style="margin-left:auto">Close</button></div>`
+    : `<div class="minor"><button class="link" data-a="close" style="margin-left:auto">Close</button></div>`}`);
+  $("#sheetCard").onclick = e => {
+    const row = e.target.closest(".item");
+    if (row) { const b = e.target.closest("[data-act]"); if (!b) return; const it = S.items[row.dataset.id]; if (!it) return;
+      if (rowPhotoAct(b.dataset.act, it.id, () => openLoc(id))) return;
+      if (b.dataset.act === "open") return openItem(it.id);
+      if (b.dataset.act === "set") return setAmount(it);
+      const n = { ...it, amount: Math.max(0, num(it.amount) + (b.dataset.act === "inc" ? 1 : -1)) }; putItem(n); lowToast(it, n); return openLoc(id); }
+    const b = e.target.closest("[data-a]"); if (!b) return;
+    const a = b.dataset.a;
+    if (a === "close") return closeSheet();
+    if (a === "audit") return auditLoc(id);
+    if (a === "label") return openLabels({ locs:[id] });
+    if (a === "rename") return editLoc(l);
+    if (a === "map") { S.mapWall = locRoom(l); closeSheet(); return showTab("map"); }
+    if (a === "delete") { if (b.dataset.sure) { delete S.locs[id]; saveAll(); renderAll(); closeSheet(); return toast("Place deleted"); } b.dataset.sure = 1; b.textContent = "Tap again to delete"; }
+  };
+}
+function editLoc(l, preset = {}){
+  const base = l || { name:"", room: preset.room || "", kind:"" };
+  const kind = base.name ? locKind(base) : (base.kind || "shelf");
+  $("#roomList").innerHTML = [...new Set([...rooms().filter(r => r !== "Other"), "Living room","Office","Basement","Bedroom","Family room","Garage","Outside"])].map(r => `<option value="${esc(r)}">`).join("");
+  openSheet(`<h2>${l ? "Edit place" : "Add a place"}</h2>
+    <div class="form"><label class="full">Name<input type="text" id="p-name" value="${esc(base.name)}" placeholder="e.g. Network rack, TV stand, Game shelf, Cable bin"></label>
+    <label>Room<input type="text" id="p-room" list="roomList" value="${esc(base.room || base.area || "")}" placeholder="e.g. Living room"></label>
+    <label>What it is<select id="p-kind">${Object.entries(LOC_KINDS).map(([k, v]) => `<option value="${k}" ${k === kind ? "selected" : ""}>${v}</option>`).join("")}</select></label></div>
+    <div class="row end" style="margin-top:14px"><button class="btn ghost" id="p-c">Cancel</button><button class="btn" id="p-s">${l ? "Save" : "Add place"}</button></div>`);
+  $("#p-name").focus();
+  $("#p-c").onclick = () => l ? openLoc(l.id) : closeSheet();
+  $("#p-s").onclick = () => {
+    const name = $("#p-name").value.trim(); if (!name) return $("#p-name").focus();
+    const extra = { room: $("#p-room").value.trim(), kind: $("#p-kind").value };
+    const n = l ? { ...l, name, ...extra } : { id:newId("loc"), name, ...extra, code: nextCode("loc"), order: Object.keys(S.locs).length + 1 };
+    delete n.example; delete n.area; delete n.wall; delete n.span; putLoc(n); toast(l ? "Saved" : "Added " + name); openLoc(n.id);
+  };
+}
+function auditLoc(id){
+  const l = S.locs[id], its = itemsIn(id);
+  openSheet(`<h2>Check ${esc(l.name)}</h2>
+    <p class="lede">Tick everything you can see. Anything you don't tick is marked missing and goes on the shopping list. Things you find that were missing go back to available.</p>
+    <div class="checks">${its.map(i => `<label><input type="checkbox" data-aud="${esc(i.id)}" ${["loaned","away","repair","retired"].includes(i.status) ? "disabled checked" : ""}><span>${esc(i.name)}${i.status !== "available" && i.status ? ` <span class="pill ${i.status}">${STATUS[i.status]}</span>` : ""}${!isTool(i) ? ` <span class="hint">supply</span>` : ""}</span></label>`).join("")}</div>
+    <div class="row end" style="margin-top:14px"><button class="btn ghost" id="a-c">Cancel</button><button class="btn" id="a-s">Finish check</button></div>`);
+  $("#a-c").onclick = () => openLoc(id);
+  $("#a-s").onclick = () => {
+    let missing = 0, found = 0;
+    $("#sheetCard").querySelectorAll("[data-aud]:not(:disabled)").forEach(cb => {
+      const it = S.items[cb.dataset.aud]; if (!it || !isTool(it)) return;
+      if (!cb.checked && (it.status === "available" || it.status === "spare")) { S.items[it.id] = { ...it, status:"missing", updated:Date.now() }; missing++; }
+      if (cb.checked && it.status === "missing") { S.items[it.id] = { ...it, status:"available", updated:Date.now() }; found++; }
+    });
+    saveAll(); renderAll();
+    toast(missing || found ? `${missing} marked missing · ${found} found` : "Everything's where it should be");
+    openLoc(id);
+  };
+}
+
+/* ---------- rooms view ---------- */
+S.mapWall = ""; S.arrange = false;
+const SHORT = { loaned:"Lent", away:"Away", repair:"Broken", missing:"Missing", retired:"Retired", spare:"Spare" };
+function tileHTML(it){
+  const st = isTool(it) && it.status && it.status !== "available" ? it.status : "";
+  return `<button class="ztile ${gone(it) ? "gone" : ""}" data-item="${esc(it.id)}" aria-label="${esc(it.name)}">${it.hasPhoto ? `<img ${imgSrc(it)} alt="">` : `<span class="zph">${esc(initials(it.category || it.name))}</span>`}${st ? `<span class="zst ${st}">${SHORT[st] || ""}</span>` : isLow(it) ? `<span class="zst low">Low</span>` : ""}<span class="zcap">${esc(it.name)}</span></button>`;
+}
+function zoneHTML(l){
+  const its = itemsIn(l.id);
+  return `<div class="zone k-${locKind(l)}" data-zone="${esc(l.id)}">
+    <button class="zlabel" data-openloc="${esc(l.id)}">${esc(l.name)}<span>${its.length}</span></button><span class="zkind">${esc(LOC_KINDS[locKind(l)])}</span>
+    <div class="ztiles">${its.map(tileHTML).join("") || `<span class="zempty">Empty</span>`}</div>
+    ${S.arrange ? `<div class="zarr"><button data-mv="-1" aria-label="Move earlier">◀</button><button data-mv="1" aria-label="Move later">▶</button><button data-editloc="${esc(l.id)}">Edit</button></div>` : ""}
+  </div>`;
+}
+const byOrder = (a, b) => (a.order || 0) - (b.order || 0) || a.name.localeCompare(b.name);
+function renderMap(){
+  const locs = Object.values(S.locs), rs = rooms();
+  if (!rs.includes(S.mapWall)) S.mapWall = rs[0] || "";
+  $("#mapWalls").innerHTML = rs.map(r => { const n = locs.filter(l => locRoom(l) === r).length; return `<button class="chip" data-wall="${esc(r)}" aria-pressed="${S.mapWall === r}">${esc(r)} · ${n}</button>`; }).join("");
+  const on = locs.filter(l => locRoom(l) === S.mapWall).sort(byOrder);
+  $("#wallUp").innerHTML = on.length ? on.map(zoneHTML).join("") : `<div class="wallnote">No places yet. Add the rack, TV stand, desk or shelf in a room with Add place.</div>`;
+  $("#arrangeBtn").setAttribute("aria-pressed", String(S.arrange)); $("#arrangeBtn").textContent = S.arrange ? "Done arranging" : "Arrange";
+  $("#mapHint").textContent = S.arrange ? "Use ◀ ▶ to reorder places in this room. Edit changes the room or type." : "";
+  const loose = itemsIn("");
+  $("#mapLooseBox").hidden = !loose.length;
+  $("#mapLoose").innerHTML = loose.map(tileHTML).join("");
+  fillPhotos($("#v-map"));
+}
+$("#v-map").addEventListener("click", e => {
+  const t = e.target.closest("[data-item],[data-openloc],[data-wall],[data-mv],[data-editloc]"); if (!t) return;
+  if (t.dataset.item) return openItem(t.dataset.item);
+  if (t.dataset.openloc) return openLoc(t.dataset.openloc);
+  if (t.dataset.editloc) return editLoc(S.locs[t.dataset.editloc]);
+  if (t.dataset.wall) { S.mapWall = t.dataset.wall; return renderMap(); }
+  const id = t.closest("[data-zone]").dataset.zone, l = S.locs[id]; if (!l) return;
+  const row = Object.values(S.locs).filter(x => locRoom(x) === locRoom(l)).sort(byOrder);
+  const i = row.findIndex(x => x.id === id), j = i + +t.dataset.mv;
+  if (j < 0 || j >= row.length) return;
+  [row[i], row[j]] = [row[j], row[i]];
+  const base = Math.min(...row.map(x => x.order || 0));
+  row.forEach((x, k) => S.locs[x.id] = { ...S.locs[x.id], order: base + k });
+  saveAll(); renderMap();
+});
+$("#mapBack").onclick = () => showTab("garage");
+$("#mapBtn").onclick = () => showTab("map");
+$("#placesMap").onclick = () => showTab("map");
+$("#arrangeBtn").onclick = () => { S.arrange = !S.arrange; renderMap(); };
+$("#mapAddLoc").onclick = () => editLoc(null, { room: S.mapWall });
+
+/* ---------- labels (QR) ---------- */
+const QR_SRC = "https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js";
+const LABELS = {
+  "5160": { name:"Avery 5160 / 8160 · 1\" × 2⅝\" · 30 per sheet", cols:3, w:2.625, h:1, top:.5, side:.1875, gapX:.125, gapY:0, qr:.8, nameSize:9, codeSize:7 },
+  "5163": { name:"Avery 5163 / 8163 · 2\" × 4\" · 10 per sheet", cols:2, w:4, h:2, top:.5, side:.15625, gapX:.1875, gapY:0, qr:1.6, nameSize:15, codeSize:10 },
+  "plain": { name:"Plain paper, cut out · 15 per sheet", cols:3, w:2.5, h:1.6, top:.5, side:.25, gapX:.25, gapY:.25, qr:1.25, nameSize:11, codeSize:8, border:true }
+};
+function qrSVG(text, sizeIn){
+  const q = qrcode(0, "M"); q.addData(text); q.make();
+  const n = q.getModuleCount(); let d = "";
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) d += `M${c} ${r}h1v1h-1z`;
+  return `<svg viewBox="-1 -1 ${n + 2} ${n + 2}" style="width:${sizeIn}in;height:${sizeIn}in" shape-rendering="crispEdges" aria-hidden="true"><rect x="-1" y="-1" width="${n + 2}" height="${n + 2}" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
+}
+function openLabels(pre){
+  const locs = Object.values(S.locs).sort((a, b) => (a.order || 0) - (b.order || 0) || a.name.localeCompare(b.name));
+  const tools = Object.values(S.items).sort((a, b) => a.name.localeCompare(b.name));
+  const preset = !!(pre.locs || pre.items);
+  const lc = l => preset ? (pre.locs || []).includes(l.id) : true;
+  const ic = i => preset ? (pre.items || []).includes(i.id) : false;
+  openSheet(`<h2>Print labels</h2>
+    <p class="lede">Stick an asset tag on each device, and on the rack, shelves and bins. Scanning it in the Scan tab opens it here.</p>
+    <div class="form"><label class="full">Label sheet<select id="lb-size">${Object.entries(LABELS).map(([k, v]) => `<option value="${k}" ${k === (CFG.labelSize || "5160") ? "selected" : ""}>${esc(v.name)}</option>`).join("")}</select></label></div>
+    <h3>Places <button class="link" data-all="loc">All</button> · <button class="link" data-none="loc">None</button></h3>
+    <div class="checks">${locs.map(l => `<label><input type="checkbox" data-lbl="loc" value="${esc(l.id)}" ${lc(l) ? "checked" : ""}><span>${esc(l.name)} <span class="mono hint">${esc(l.code)}</span></span></label>`).join("") || `<p class="hint">No places yet.</p>`}</div>
+    <h3>Items <button class="link" data-all="it">All</button> · <button class="link" data-none="it">None</button></h3>
+    <div class="checks">${tools.map(i => `<label><input type="checkbox" data-lbl="it" value="${esc(i.id)}" ${ic(i) ? "checked" : ""}><span>${esc(i.name)} <span class="mono hint">${esc(i.code)}</span></span></label>`).join("") || `<p class="hint">No items yet.</p>`}</div>
+    <p class="hint" id="lb-count" style="margin-top:10px"></p>
+    <p class="hint">In the print dialog, set scale to 100% (Actual size) and turn off headers and footers.</p>
+    <div class="row end" style="margin-top:10px"><button class="btn ghost" id="lb-c">Cancel</button><button class="btn" id="lb-p">Print</button></div>`);
+  const card = $("#sheetCard");
+  const count = () => { const n = card.querySelectorAll("[data-lbl]:checked").length, L = LABELS[$("#lb-size").value], per = L.cols * Math.floor((11 - 2 * L.top + L.gapY) / (L.h + L.gapY)); $("#lb-count").textContent = n ? `${n} label${n === 1 ? "" : "s"} on ${Math.ceil(n / per)} sheet${Math.ceil(n / per) === 1 ? "" : "s"}.` : "Choose at least one label."; };
+  count();
+  card.onchange = count;
+  card.onclick = e => {
+    const all = e.target.closest("[data-all]"), none = e.target.closest("[data-none]");
+    if (all) card.querySelectorAll(`[data-lbl=${all.dataset.all}]`).forEach(c => c.checked = true);
+    if (none) card.querySelectorAll(`[data-lbl=${none.dataset.none}]`).forEach(c => c.checked = false);
+    if (all || none) count();
+  };
+  $("#lb-c").onclick = closeSheet;
+  $("#lb-p").onclick = async () => {
+    const chosen = [...card.querySelectorAll("[data-lbl]:checked")].map(c => c.dataset.lbl === "loc" ? { code:S.locs[c.value].code, name:S.locs[c.value].name, sub:S.locs[c.value].room || "Place" } : { code:S.items[c.value].code, name:S.items[c.value].name, sub:[S.items[c.value].ip, S.items[c.value].serial ? "S/N " + S.items[c.value].serial : S.items[c.value].category].filter(Boolean).join(" · ") });
+    if (!chosen.length) return toast("Choose at least one label");
+    CFG.labelSize = $("#lb-size").value; saveCfg();
+    $("#lb-p").disabled = true;
+    try { await loadScript(QR_SRC); } catch(e){ $("#lb-p").disabled = false; return toast("The QR code maker couldn't load. Check your connection."); }
+    buildLabels(chosen, LABELS[CFG.labelSize]);
+    $("#lb-p").disabled = false;
+    setTimeout(() => window.print(), 100);
+  };
+}
+function buildLabels(list, L){
+  const rows = Math.floor((11 - 2 * L.top + L.gapY) / (L.h + L.gapY)), per = L.cols * rows;
+  let html = "";
+  for (let p = 0; p < list.length; p += per) {
+    html += `<div class="lblpage" style="padding:${L.top}in ${L.side}in;grid-template-columns:repeat(${L.cols},${L.w}in);grid-auto-rows:${L.h}in;column-gap:${L.gapX}in;row-gap:${L.gapY}in">` +
+      list.slice(p, p + per).map(x => `<div class="lbl ${L.border ? "bordered" : ""}">${qrSVG(x.code, L.qr)}<div class="t"><b style="font-size:${L.nameSize}pt">${esc(x.name)}</b><span class="c" style="font-size:${L.codeSize}pt">${esc(x.code)}</span><small style="font-size:${L.codeSize}pt">${esc(x.sub || "")}</small></div></div>`).join("") + `</div>`;
+  }
+  $("#printArea").innerHTML = html;
+}
+
+/* ---------- out ---------- */
+function renderOut(){
+  const items = Object.values(S.items).filter(i => isOut(i) || isAttn(i));
+  const groups = [
+    ["Loaned out", items.filter(i => i.status === "loaned").sort((a, b) => (isOverdue(b) - isOverdue(a)) || ((a.loan || {}).since || "").localeCompare((b.loan || {}).since || ""))],
+    ["Away from home", items.filter(i => i.status === "away")],
+    ["Broken", items.filter(i => i.status === "repair")],
+    ["Missing", items.filter(i => i.status === "missing")]
+  ].filter(g => g[1].length);
+  if (!groups.length) { $("#outList").innerHTML = `<div class="empty">Everything's home and working.</div>`; return; }
+  const btn = { loaned:"Returned", away:"Back", repair:"Fixed", missing:"Found" };
+  $("#outList").innerHTML = groups.map(([title, list]) => `<h3>${esc(title)}</h3>` + list.map(i => {
+    let meta = "";
+    if (i.status === "loaned" && i.loan) meta = `<span>with <b>${esc(i.loan.to)}</b></span><span>${daysSince(i.loan.since)} days</span>${i.loan.due ? `<span>due ${fmtDate(i.loan.due)}</span>` : ""}`;
+    else if (i.status === "away" && i.away) meta = `<span>${esc(i.away.where)}</span><span>since ${fmtDate(i.away.since)}</span>`;
+    else meta = `<span>${esc(locName(i.locationId) || "No place")}</span>${i.notes ? `<span>${esc(i.notes)}</span>` : ""}`;
+    return `<div class="out" data-id="${esc(i.id)}"><button class="main" data-act="open"><div class="name">${esc(i.name)} ${isOverdue(i) ? `<span class="pill overdue">Overdue</span>` : ""}</div><div class="meta">${meta}</div></button><button class="btn sm ghost" data-act="back">${btn[i.status]}</button></div>`;
+  }).join("")).join("");
+}
+$("#outList").addEventListener("click", e => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const it = S.items[b.closest(".out").dataset.id]; if (!it) return;
+  if (b.dataset.act === "open") return openItem(it.id);
+  setStatus(it, "available"); toast(it.name + " is available");
+});
+
+/* ---------- shopping list ---------- */
+function renderList(){
+  const groups = {};
+  Object.values(S.items).filter(needsBuying).forEach(it => { const st = (isTool(it) ? (it.purchase || {}).store : it.store) || "Any store"; (groups[st] ||= []).push({ it }); });
+  Object.values(S.extras).forEach(x => (groups["Any store"] ||= []).push({ x }));
+  const keys = Object.keys(groups).sort((a, b) => a === "Any store" ? 1 : b === "Any store" ? -1 : a.localeCompare(b));
+  if (!keys.length) { $("#list").innerHTML = `<div class="empty">Nothing to buy. Batteries and cables appear here when they drop to their low level, and devices when they go missing.</div>`; return; }
+  let total = 0;
+  $("#list").innerHTML = keys.map(k => `<div class="store">${esc(k)}</div>` + groups[k].map(({ it, x }) => {
+    if (x) return `<div class="li"><input type="checkbox" data-xdone="${esc(x.id)}" aria-label="Bought ${esc(x.name)}"><div class="main"><div class="name">${esc(x.name)}</div><div class="meta"><span>Added by hand</span></div></div><span></span></div>`;
+    const price = isTool(it) ? (it.purchase || {}).price : it.price; total += num(price);
+    const meta = isTool(it)
+      ? `<span>${esc(it.category)}</span>${it.brand ? `<span>${esc(it.brand)} ${esc(it.model || "")}</span>` : ""}${price ? `<span>~${money(price)}</span>` : ""}`
+      : `<span>Have ${esc(amtText(it).big)}${it.unit === "count" ? "" : " " + esc(it.unit)}</span><span>Buy ${esc(num(it.restock) || 1)}${it.unit === "count" ? "" : " " + esc(it.unit)}</span>${price ? `<span>~${money(price)}</span>` : ""}`;
+    const pill = isTool(it) ? `<span class="pill ${it.status === "missing" ? "missing" : "repair"}">${it.status === "missing" ? "Replace" : "Buy"}</span>` : `<span class="pill low">Low</span>`;
+    return `<div class="li"><input type="checkbox" data-bought="${esc(it.id)}" aria-label="Bought ${esc(it.name)}"><div class="main"><div class="name">${esc(it.name)}</div><div class="meta">${meta}</div></div>${pill}</div>`;
+  }).join("")).join("") + (total ? `<p class="hint" style="margin-top:14px">Estimated total: ${money(total)} for priced items.</p>` : "");
+}
+$("#list").addEventListener("change", e => {
+  const id = e.target.dataset.bought, xid = e.target.dataset.xdone;
+  if (id && S.items[id]) {
+    const it = S.items[id];
+    if (isTool(it)) { setStatus(it, "available"); toast(it.name + " is back in stock"); }
+    else { putItem({ ...it, amount: num(it.amount) + (num(it.restock) || 1) }); toast("Restocked " + it.name); }
+  }
+  if (xid) { delete S.extras[xid]; saveAll(); renderAll(); toast("Checked off"); }
+});
+function addExtra(){ const v = $("#extraName").value.trim(); if (!v) return; const x = { id:newId("x"), name:v, added:Date.now() }; S.extras[x.id] = x; saveAll(); renderAll(); $("#extraName").value = ""; }
+$("#extraAdd").onclick = addExtra;
+$("#extraName").addEventListener("keydown", e => { if (e.key === "Enter") addExtra(); });
+
+/* ---------- tabs ---------- */
+function showTab(t){
+  S.tab = t;
+  document.querySelectorAll("nav.tabs [data-tab]").forEach(x => x.toggleAttribute("aria-current", false));
+  document.querySelector(`nav.tabs [data-tab="${t === "map" ? "garage" : t}"]`).setAttribute("aria-current", "page");
+  ["garage","scan","net","places","out","list","map"].forEach(v => $("#v-" + v).hidden = v !== t);
+  if (t !== "scan") stopCam();
+  renderAll(); window.scrollTo(0, 0);
+}
+document.querySelector("nav.tabs").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) showTab(b.dataset.tab); });
+
+/* ---------- Claude (optional API key) ---------- */
+const loadedScripts = {};
+function loadScript(src){
+  return loadedScripts[src] ||= new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => { delete loadedScripts[src]; rej(new Error("Couldn't load " + src)); }; document.head.appendChild(s); });
+}
+async function toJpegB64(blob, max = 1600){
+  const bmp = await createImageBitmap(blob);
+  const s = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  const c = document.createElement("canvas"); c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s);
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+  return c.toDataURL("image/jpeg", 0.85).split(",")[1];
+}
+function parseJSON(t){
+  try { return JSON.parse(t); } catch(e){}
+  const m = t.match(/```(?:json)?\s*([\s\S]*?)```/); if (m) { try { return JSON.parse(m[1]); } catch(e){} }
+  const i = t.search(/[\[{]/), j = Math.max(t.lastIndexOf("}"), t.lastIndexOf("]"));
+  return JSON.parse(t.slice(i, j + 1));
+}
+async function askClaude(prompt, images = []){
+  const content = [];
+  for (const b of images) content.push({ type:"image", source:{ type:"base64", media_type:"image/jpeg", data: await toJpegB64(b) } });
+  content.push({ type:"text", text: prompt });
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method:"POST",
+    headers:{ "content-type":"application/json", "x-api-key":CFG.apiKey, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
+    body: JSON.stringify({ model: CFG.model || "claude-sonnet-5-5", max_tokens: 1500, messages:[{ role:"user", content }] })
+  });
+  if (!r.ok) throw new Error(r.status === 401 ? "Your Claude API key was rejected. Check it in Settings." : r.status === 429 ? "Claude is rate limiting requests. Wait a minute and try again." : "The Claude request failed (error " + r.status + ").");
+  const j = await r.json();
+  return parseJSON(j.content.map(c => c.text || "").join(""));
+}
+async function identifyPhoto(blob, code){
+  const r = await askClaude(
+`This photo shows a piece of home electronics, a video game, a disc, or an electronics supply: the item itself, its box or case, or its label/rating plate.
+${code ? "Its barcode was read as " + code + "." : "If a barcode is visible, read its digits."}
+Choose department and category ONLY from this list (format "Department > Category"):
+${TAX_LINES}
+Reply with only JSON:
+{"name": "short name a person would use, e.g. 'Wi-Fi 7 mesh router', 'Mario Kart World', '65\\" OLED TV'", "brand": "brand, or publisher for games, or null", "model": "model number, or edition for games, or null", "serial": "serial number if printed (S/N), or null", "mac": "MAC address if printed, or null", "department": "...", "category": "...", "kind": "tool" or "supply", "format": "for games and movies: disc, cart, digital or code; otherwise null", "unit": "for supplies: one of ${UNITS.join(", ")}; otherwise null", "barcode": "digits or null"}
+Use "supply" only for things that get used up or are kept as a stock count (batteries, cables, connectors, ink). Video games go in Video Games, in the category for their platform. Use null for anything you cannot tell.`, [blob]);
+  if (!validCat(r.department, r.category)) { const g = guessCategory([r.name, r.category].join(" ")); if (g) Object.assign(r, { department: g.department, category: g.category }); }
+  return r;
+}
+
+/* ---------- product lookup for unknown barcodes ---------- */
+async function lookupProduct(code){
+  try {
+    const r = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`);
+    if (r.ok) { const j = await r.json(); const p = j.items && j.items[0]; if (p && p.title) return { name:p.title, brand:p.brand || "", model:p.model || "", hint:p.category || "", source:"UPCitemdb" }; }
+  } catch(e){}
+  for (const host of ["world.openproductsfacts.org", "world.openfoodfacts.org"]) {
+    try {
+      const r = await fetch(`https://${host}/api/v2/product/${encodeURIComponent(code)}.json?fields=product_name,brands,quantity`);
+      if (!r.ok) continue; const j = await r.json(); const p = j.product;
+      if (j.status === 1 && p && (p.product_name || p.brands)) { const brand = (p.brands || "").split(",")[0].trim(); return { name:[brand, p.product_name, p.quantity].filter(Boolean).join(" ").trim(), brand, model:"", hint:"", source:host.replace("world.", "") }; }
+    } catch(e){}
+  }
+  return null;
+}
+
+/* ---------- live camera scanning ---------- */
+const ZX = "https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js";
+const FORMATS = ["ean_13","ean_8","upc_a","upc_e","code_128","code_39","itf","qr_code","data_matrix"];
+let detector = null, zxReader = null, cam = null;
+const crop = document.createElement("canvas");
+async function getDetector(){
+  if (detector !== null) return detector;
+  detector = false;
+  try {
+    if ("BarcodeDetector" in window) {
+      const sup = await BarcodeDetector.getSupportedFormats();
+      const f = FORMATS.filter(x => sup.includes(x));
+      if (f.length) detector = new BarcodeDetector({ formats: f });
+    }
+  } catch(e){}
+  return detector;
+}
+async function getZX(){
+  if (zxReader) return zxReader;
+  await loadScript(ZX);
+  const F = ZXing.BarcodeFormat, hints = new Map();
+  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E, F.CODE_128, F.CODE_39, F.ITF, F.QR_CODE, F.DATA_MATRIX]);
+  hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+  zxReader = new ZXing.MultiFormatReader(); zxReader.setHints(hints);
+  return zxReader;
+}
+function zxDecode(canvas){
+  if (!zxReader) return null;
+  try { return zxReader.decode(new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(new ZXing.HTMLCanvasElementLuminanceSource(canvas)))).getText(); }
+  catch(e){ return null; }
+  finally { try { zxReader.reset(); } catch(e){} }
+}
+async function readCanvas(canvas){
+  if (detector) { try { const r = await detector.detect(canvas); if (r[0] && r[0].rawValue) return { code: r[0].rawValue, sure: true }; } catch(e){} }
+  const z = zxDecode(canvas);
+  return z ? { code: z, sure: /^TS-(IT|LOC)-\d+$/.test(z) } : null;
+}
+const SCAN_TAB = { viewer:"#viewer", video:"#video", btn:"#camBtn", torch:"#torchBtn", zoom:"#zoomBtn", status:"#scanStatus", startText:"Start camera", stopText:"Stop camera" };
+const FORM_CAM = { viewer:"#f-viewer", video:"#f-video", btn:null, torch:"#f-torch", zoom:"#f-zoom", status:"#f-msg", show:true, inSheet:true };
+const el$ = sel => sel ? $(sel) : null;
+async function startCam(els = SCAN_TAB, onFound = handleCode){
+  if (cam) stopCam();
+  const st = t => { const n = el$(els.status); if (n) n.textContent = t; };
+  if (els === SCAN_TAB) $("#scanResult").innerHTML = "";
+  if (els.show && el$(els.viewer)) el$(els.viewer).hidden = false;
+  st("Starting camera…");
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw Object.assign(new Error(), { name: "NoMedia" });
+    await Promise.all([getDetector(), getZX().catch(() => null)]);
+    if (!detector && !zxReader) throw Object.assign(new Error(), { name: "NoReader" });
+    const stream = await navigator.mediaDevices.getUserMedia({ audio:false, video:{ facingMode:{ ideal:"environment" }, width:{ ideal:1920 }, height:{ ideal:1080 } } });
+    const v = el$(els.video); if (!v) { stream.getTracks().forEach(t => t.stop()); return; }
+    v.srcObject = stream;
+    try { await v.play(); } catch(e){}
+    const track = stream.getVideoTracks()[0];
+    cam = { stream, track, timer:null, busy:false, last:null, lastAt:0, torch:false, zoom:1, zoomCaps:null, els, onFound };
+    try {
+      const caps = track.getCapabilities ? track.getCapabilities() : {};
+      if (caps.focusMode && caps.focusMode.includes("continuous")) await track.applyConstraints({ advanced:[{ focusMode:"continuous" }] });
+      if (el$(els.torch)) { el$(els.torch).hidden = !caps.torch; el$(els.torch).setAttribute("aria-pressed", "false"); }
+      cam.zoomCaps = caps.zoom && caps.zoom.max > 1 ? caps.zoom : null;
+      if (el$(els.zoom)) { el$(els.zoom).hidden = !cam.zoomCaps; el$(els.zoom).textContent = "1×"; }
+    } catch(e){}
+    el$(els.viewer).classList.add("live"); if (el$(els.btn)) el$(els.btn).textContent = els.stopText;
+    st("Fill the box with the barcode, about a hand's width away." + (el$(els.torch) && !el$(els.torch).hidden ? " Tap Light in dim spots." : ""));
+    scanLoop();
+  } catch(e) {
+    stopCam(els);
+    const n = e && e.name;
+    st(n === "NotAllowedError" ? "Camera access was blocked. Allow the camera for this site in your browser settings, or use a photo instead."
+      : n === "NotFoundError" || n === "OverconstrainedError" ? "No usable camera was found. Use a photo or type the number."
+      : n === "NoReader" ? "The barcode reader couldn't load. Check your connection and try again."
+      : location.protocol !== "https:" && location.hostname !== "localhost" ? "The camera only works when the site is opened over https."
+      : "The camera couldn't start. Try again, or use a photo instead.");
+  }
+}
+function cropAim(v){
+  const vw = v.videoWidth, vh = v.videoHeight;
+  const el = v.getBoundingClientRect(), A = el.width / el.height, B = vw / vh;
+  let visW = vw, visH = vh;
+  if (B > A) visW = vh * A; else visH = vw / A;
+  const cw = visW * 0.86, ch = visH * 0.52;
+  const sx = (vw - cw) / 2, sy = (vh - ch) / 2;
+  const scale = Math.max(1, Math.min(2.5, 1400 / cw));
+  crop.width = Math.round(cw * scale); crop.height = Math.round(ch * scale);
+  const ctx = crop.getContext("2d", { willReadFrequently: true });
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(v, sx, sy, cw, ch, 0, 0, crop.width, crop.height);
+  return crop;
+}
+async function scanLoop(){
+  if (!cam) return;
+  const v = el$(cam.els.video);
+  if (!v) return stopCam();
+  if (v.videoWidth && !cam.busy) {
+    cam.busy = true;
+    try {
+      const hit = await readCanvas(cropAim(v));
+      if (hit && cam) {
+        if (hit.sure || (cam.last === hit.code && Date.now() - cam.lastAt < 2500)) { cam.busy = false; return found(hit.code); }
+        cam.last = hit.code; cam.lastAt = Date.now();
+      }
+    } catch(e){}
+    if (cam) cam.busy = false;
+  }
+  if (cam) cam.timer = setTimeout(scanLoop, detector ? 100 : 160);
+}
+function found(code){
+  const frame = grabFrame(), cb = cam.onFound;
+  try { navigator.vibrate && navigator.vibrate(60); } catch(e){}
+  stopCam();
+  cb(code, frame);
+}
+function grabFrame(){
+  try {
+    const v = el$(cam.els.video); if (!v || !v.videoWidth) return null;
+    const c = document.createElement("canvas"); c.width = v.videoWidth; c.height = v.videoHeight;
+    c.getContext("2d").drawImage(v, 0, 0);
+    return new Promise(res => c.toBlob(b => res(b), "image/jpeg", 0.85));
+  } catch(e){ return null; }
+}
+function stopCam(elsOverride){
+  const els = (cam && cam.els) || elsOverride || SCAN_TAB;
+  if (cam) { clearTimeout(cam.timer); try { cam.stream.getTracks().forEach(t => t.stop()); } catch(e){} cam = null; }
+  const v = el$(els.video); if (v) v.srcObject = null;
+  const vw = el$(els.viewer); if (vw) { vw.classList.remove("live"); if (els.show) vw.hidden = true; }
+  if (el$(els.btn)) el$(els.btn).textContent = els.startText;
+  if (el$(els.torch)) el$(els.torch).hidden = true;
+  if (el$(els.zoom)) el$(els.zoom).hidden = true;
+}
+async function toggleTorch(){
+  if (!cam) return;
+  try { await cam.track.applyConstraints({ advanced:[{ torch: !cam.torch }] }); cam.torch = !cam.torch; el$(cam.els.torch).setAttribute("aria-pressed", String(cam.torch)); }
+  catch(e){ toast("This camera's light can't be controlled from the browser."); }
+}
+async function cycleZoom(){
+  if (!cam || !cam.zoomCaps) return;
+  const steps = [1, 2, 3].map(z => Math.min(z, cam.zoomCaps.max)).filter((z, i, a) => a.indexOf(z) === i);
+  const next = steps[(steps.indexOf(cam.zoom) + 1) % steps.length] || 1;
+  try { await cam.track.applyConstraints({ advanced:[{ zoom: next }] }); cam.zoom = next; el$(cam.els.zoom).textContent = (+next.toFixed(1)) + "×"; } catch(e){}
+}
+$("#camBtn").onclick = () => cam ? (stopCam(), $("#scanStatus").textContent = "") : startCam(SCAN_TAB, handleCode);
+$("#torchBtn").onclick = toggleTorch;
+$("#zoomBtn").onclick = cycleZoom;
+document.addEventListener("visibilitychange", () => { if (document.hidden) stopCam(); });
+
+/* ---------- photo input on the Scan tab ---------- */
+async function decodeImage(file){
+  try {
+    await Promise.all([getDetector(), getZX().catch(() => null)]);
+    const bmp = await createImageBitmap(file);
+    const c = document.createElement("canvas"); const sc = Math.min(1, 2000 / Math.max(bmp.width, bmp.height));
+    c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc);
+    c.getContext("2d", { willReadFrequently: true }).drawImage(bmp, 0, 0, c.width, c.height);
+    const hit = await readCanvas(c); return hit ? hit.code : null;
+  } catch(e){ return null; }
+}
+$("#scanFile").addEventListener("change", async e => {
+  const file = e.target.files[0]; e.target.value = ""; if (!file) return;
+  stopCam(); $("#scanResult").innerHTML = ""; $("#scanStatus").textContent = "Looking for a barcode…";
+  const code = await decodeImage(file);
+  if (code) return handleCode(code, file);
+  $("#scanStatus").textContent = "No barcode found in that photo. Try a closer, sharper shot, or use Identify from photo.";
+});
+$("#idFile").addEventListener("change", async e => {
+  const file = e.target.files[0]; e.target.value = ""; if (!file) return;
+  stopCam(); $("#scanResult").innerHTML = ""; $("#scanStatus").textContent = "";
+  const code = await decodeImage(file);
+  if (code && (/^TS-(IT|LOC)-\d+$/i.test(code) || findByBarcode(code))) return handleCode(code, file);
+  editItem({}, true, { photo: file });
+});
+function identityToSug(r, code){
+  const out = { name: r.name || "", brand: r.brand || "", model: r.model || "", kind: r.kind === "supply" ? "supply" : r.kind === "tool" ? "tool" : "",
+    format: GAME_FORMATS[r.format] ? r.format : "", serial: r.serial ? cleanSerial(r.serial) : "", mac: r.mac ? normMac(r.mac) : "", unit: UNITS.includes(r.unit) ? r.unit : "", barcode: code || (r.barcode ? String(r.barcode).replace(/\D/g, "") : "") };
+  if (validCat(r.department, r.category)) { out.department = r.department; out.category = r.category; }
+  return out;
+}
+/* Shortens a store listing title: drops brackets, the model number and filler words. */
+function cleanTitle(t, brand, model){
+  let s = String(t || "").replace(/\([^)]*\)|\[[^\]]*\]/g, " ");
+  if (model) s = s.replace(new RegExp("\\b" + model.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "ig"), " ");
+  s = s.replace(/\b(tool only|bare tool|kit not included|battery not included|with case)\b/ig, " ").replace(/\s{2,}/g, " ").replace(/\s+,/g, ",").trim();
+  if (brand && s.toUpperCase().startsWith(brand.toUpperCase())) s = brand.charAt(0) + brand.slice(1).toLowerCase() + s.slice(brand.length);
+  return s.length > 70 ? s.slice(0, 70).replace(/\s+\S*$/, "") : s;
+}
+async function classifyTitle(title, hint){
+  const r = await askClaude(
+`A product barcode lookup returned this listing: "${title}"${hint ? ` (store category: ${hint})` : ""}.
+Turn it into a home electronics inventory entry. Choose department and category ONLY from this list (format "Department > Category"):
+${TAX_LINES}
+Reply with only JSON:
+{"name": "short name a person would use", "brand": "brand, or publisher for games, or null", "model": "model number, or edition for games, or null", "department": "...", "category": "...", "kind": "tool" or "supply", "format": "for games and movies: disc, cart, digital or code; otherwise null", "unit": "for supplies: one of ${UNITS.join(", ")}; otherwise null"}
+Video games go in Video Games, in the category for their platform.`);
+  return identityToSug(r, "");
+}
+$("#manualGo").onclick = () => { const v = $("#manualCode").value.trim(); if (v) { stopCam(); handleCode(/^ts-/i.test(v) ? v.toUpperCase() : v.replace(/\s/g, ""), null); } };
+$("#manualCode").addEventListener("keydown", e => { if (e.key === "Enter") $("#manualGo").click(); });
+
+const findByBarcode = code => Object.values(S.items).find(i => i.barcode && i.barcode.replace(/^0+/, "") === String(code).replace(/^0+/, ""));
+const findByCode = code => Object.values(S.items).find(i => i.code === code) || Object.values(S.locs).find(l => l.code === code);
+
+async function handleCode(code, frame){
+  $("#scanResult").innerHTML = "";
+  code = String(code).trim();
+  if (/^TS-(IT|LOC)-\d+$/i.test(code)) {
+    const hit = findByCode(code.toUpperCase());
+    $("#scanStatus").textContent = hit ? "" : `Tag ${code} isn't in your list. It may have been deleted, or printed on another device.`;
+    if (!hit) return;
+    return S.locs[hit.id] ? openLoc(hit.id) : openItem(hit.id);
+  }
+  const hit = findByBarcode(code);
+  if (hit) { $("#scanStatus").textContent = ""; return openItem(hit.id); }
+  $("#scanStatus").textContent = "";
+  editItem({}, true, { code, frame });
+}
+
+/* ---------- settings ---------- */
+function openSettings(){
+  openSheet(`<h2>Settings</h2>
+    <div class="form">
+      <label class="full">Claude API key (optional)<input type="password" id="s-key" autocomplete="off" value="${esc(CFG.apiKey || "")}" placeholder="sk-ant-…"></label>
+      <label class="full">Claude model<select id="s-model">
+        <option value="claude-sonnet-5-5" ${(CFG.model || "claude-sonnet-5-5") === "claude-sonnet-5-5" ? "selected" : ""}>Sonnet 5.5 (best at identifying devices)</option>
+        <option value="claude-haiku-5-5" ${CFG.model === "claude-haiku-5-5" ? "selected" : ""}>Haiku 5.5 (faster, cheaper)</option></select></label>
+      <p class="full hint" style="margin:0">With a key, Claude identifies devices and games from a photo of the item, its box or its label, reads serial numbers and MAC addresses, and files them in the right category. The key is stored only in this browser and sent only to Anthropic. Usage is billed to your API account (console.anthropic.com).</p>
+    </div>
+    <div class="row end" style="margin-top:12px"><button class="btn" id="s-save">Save</button></div>
+    <h3>Online storage &amp; sync</h3>
+    <p class="hint" style="margin:0 0 10px">Your list and photos live online in your Cloudflare storage: open the app on any phone, tablet or computer and you see the same things and places, kept in step automatically. It uses the same storage and household key as Home Stock and Garage Stock.</p>
+    <div class="form">
+      <label class="full">Storage link<input type="url" id="s-curl" value="${esc(cloudBase())}" placeholder="https://garage-photos.yourname.workers.dev"></label>
+      <label class="full">Upload key<input type="password" id="s-ckey" autocomplete="off" value="${esc(CFG.cloudKey || "")}" placeholder="gs_…"></label>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="btn ghost" id="s-ctest">Test connection</button><button class="btn ghost" id="s-cup" hidden>Upload photos on this phone</button></div>
+    <p class="hint" id="s-cmsg" style="margin:8px 0 0"></p>
+    <div id="s-syncbox" ${cloudOn() ? "" : "hidden"} style="margin-top:12px">
+      <label style="display:flex;gap:10px;align-items:center;font-size:14px;font-weight:600"><input type="checkbox" id="s-sync" ${CFG.sync !== false ? "checked" : ""}> Keep my tech list in sync across devices</label>
+      <p class="hint" id="s-syncstate" style="margin:6px 0 10px"></p>
+      <div class="row"><button class="btn" id="s-link">Copy link for another device</button><button class="btn ghost" id="s-syncnow">Sync now</button></div>
+      <p class="hint" style="margin:8px 0 0">Open the copied link on the other device once; it connects automatically and remembers. Anyone with that link can see and change your list, so only share it with your household.</p>
+    </div>
+    <h3>Backup</h3>
+    <p class="hint" style="margin:0 0 10px">Export a backup file to keep a copy of everything, including photos kept on this phone.</p>
+    <div class="row"><button class="btn ghost" id="s-export">Export backup</button><label class="btn ghost" for="s-import">Import backup</label><input type="file" id="s-import" accept="application/json,.json" hidden></div>
+    <h3>Value &amp; insurance</h3>
+    <p class="hint" id="s-value" style="margin:0 0 10px"></p>
+    <div class="row"><button class="btn ghost" id="s-insure">Download insurance list (CSV)</button></div>
+    <p class="hint" style="margin:8px 0 0">Every device, game and disc with brand, model, serial number, price, purchase date, store, warranty and where it lives. Opens in Excel, Numbers or Google Sheets.</p>
+    <div class="row end" style="margin-top:18px"><button class="btn ghost" id="s-close">Close</button></div>`);
+  const tools = Object.values(S.items).filter(i => isTool(i) && i.status !== "retired");
+  const val = tools.reduce((t, i) => t + num((i.purchase || {}).price) * (num(i.qty) || 1), 0);
+  const priced = tools.filter(i => (i.purchase || {}).price).length;
+  $("#s-value").textContent = `${tools.length} devices, games and discs, ${money(val) || "$0.00"} in recorded purchase prices (${priced} of ${tools.length} have a price).`;
+  $("#s-insure").onclick = () => downloadCSV("tech-stock-insurance-" + today() + ".csv", insuranceRows());
+  $("#s-close").onclick = closeSheet;
+  const localCount = () => Object.values(S.items).filter(i => i.hasPhoto && !i.photoUrl).length;
+  const showUp = () => { const n = localCount(); $("#s-cup").hidden = !(cloudOn() && n); $("#s-cup").textContent = `Upload ${n} photo${n === 1 ? "" : "s"} on this phone`; };
+  showUp();
+  const syncState = () => { if ($("#s-syncstate")) $("#s-syncstate").textContent = !syncOn() ? "Sync is off. This device keeps its own list." : `Status: ${$("#subtitle").textContent}.`; };
+  syncState();
+  $("#s-sync").onchange = e => { CFG.sync = e.target.checked; saveCfg(); if (CFG.sync) { SYNC.dirty = true; syncNow().then(syncState); } else { setSyncStatus("off"); syncState(); } };
+  $("#s-syncnow").onclick = async () => { $("#s-syncstate").textContent = "Syncing…"; await syncNow(); syncState(); };
+  $("#s-link").onclick = async () => {
+    const link = connectLink();
+    try { await navigator.clipboard.writeText(link); toast("Link copied. Open it on your other device."); }
+    catch(e){ $("#s-syncstate").innerHTML = `Copy this link: <input type="text" readonly value="${esc(link)}" style="width:100%;margin-top:6px" onfocus="this.select()">`; }
+  };
+  $("#s-ctest").onclick = async () => {
+    const url = $("#s-curl").value.trim().replace(/\/+$/, ""), key = $("#s-ckey").value.trim();
+    if (!url) return $("#s-cmsg").textContent = "Paste the storage link from Cloudflare first.";
+    $("#s-cmsg").textContent = "Testing…";
+    try {
+      const r = await fetch(url + "/ping", { headers: key ? { "Authorization":"Bearer " + key } : {} });
+      const j = await r.json();
+      if (!j.ok) throw 0;
+      if (!j.auth) { $("#s-cmsg").textContent = "Connected, but the upload key doesn't match the UPLOAD_KEY secret in Cloudflare."; return; }
+      CFG.cloudUrl = url; CFG.cloudKey = key; if (CFG.sync === undefined) CFG.sync = true; saveCfg(); showUp();
+      $("#s-syncbox").hidden = false;
+      $("#s-cmsg").textContent = j.data ? "Connected. Your list and photos are stored online." : "Connected for photos. To sync your list, update the Cloudflare worker.";
+      SYNC.everSynced = false; saveSyncMeta();
+      await syncNow(); syncState(); await uploadPhotosQuietly(); showUp();
+    } catch(e){ $("#s-cmsg").textContent = "Couldn't reach photo storage at that link. Check the link, and that the Worker has the PHOTOS storage binding."; }
+  };
+  $("#s-cup").onclick = async () => {
+    $("#s-cup").disabled = true;
+    try { const r = await uploadLocalPhotos((d, t) => $("#s-cmsg").textContent = `Uploading ${d} of ${t}…`); $("#s-cmsg").textContent = `Uploaded ${r.done} photo${r.done === 1 ? "" : "s"}. They're stored online now.`; }
+    catch(err){ $("#s-cmsg").textContent = err.message; }
+    $("#s-cup").disabled = false; showUp();
+  };
+  $("#s-save").onclick = () => {
+    CFG.cloudUrl = $("#s-curl").value.trim().replace(/\/+$/, ""); CFG.cloudKey = $("#s-ckey").value.trim();
+    CFG.apiKey = $("#s-key").value.trim(); CFG.model = $("#s-model").value; saveCfg(); closeSheet();
+    toast(CFG.apiKey ? "Saved. Photo identification is on" : "Saved"); setTimeout(syncNow, 100);
+  };
+  $("#s-export").onclick = async () => {
+    const data = { app:"tech-stock", version:1, exported:new Date().toISOString(), items:S.items, locs:S.locs, extras:S.extras, seq:S.seq, photos: await photoAll() };
+    const blob = new Blob([JSON.stringify(data)], { type:"application/json" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "tech-stock-backup-" + today() + ".json";
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  };
+  $("#s-import").onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    try {
+      const d = JSON.parse(await f.text());
+      if (d.app !== "tech-stock" || !d.items) throw 0;
+      Object.assign(S, { items:d.items, locs:d.locs || {}, extras:d.extras || {}, seq:d.seq || { it:0, loc:0 } });
+      const now = Date.now(); for (const k of KINDS) Object.values(S[k]).forEach(r => r.updated = now); SNAP = { items:{}, locs:{}, extras:{} };
+      for (const [id, v] of Object.entries(d.photos || {})) await photoPut(id, v);
+      saveAll(); renderAll(); closeSheet(); toast("Imported " + Object.keys(S.items).length + " items");
+    } catch(err){ toast("That file isn't a Tech Stock backup."); }
+  };
+}
+$("#settingsBtn").onclick = openSettings;
+
+/* ---------- sync across devices (your Cloudflare storage) ----------
+   The list lives online; every device keeps a copy so it opens instantly and works offline.
+   Changes merge record by record: the latest edit of an item, place or list line wins, and deletions carry over. */
+const SYNC_NAME = "tech", SYNC_META = "techstock.sync";
+const SYNC = { version: 0, dirty: false, busy: false, timer: null, again: false, everSynced: false };
+try { Object.assign(SYNC, JSON.parse(localStorage.getItem(SYNC_META) || "{}")); SYNC.busy = false; SYNC.timer = null; } catch(e){}
+const saveSyncMeta = () => { try { localStorage.setItem(SYNC_META, JSON.stringify({ version: SYNC.version, dirty: SYNC.dirty, everSynced: SYNC.everSynced })); } catch(e){} };
+const syncOn = () => cloudOn() && CFG.sync !== false;
+function setSyncStatus(st){
+  $("#subtitle").textContent = { off: "Saved on this device", syncing: "Syncing…", ok: "Synced across your devices", offline: "Offline · changes will sync", old: "Update the Cloudflare worker to sync", key: "Sync key rejected · check Settings" }[st] || "";
+}
+function markDirty(){
+  if (!syncOn()) return;
+  SYNC.dirty = true; saveSyncMeta();
+  clearTimeout(SYNC.timer); SYNC.timer = setTimeout(syncNow, 2000);
+}
+async function syncReq(method, body){
+  let r;
+  try { r = await fetch(`${cloudBase()}/data/${SYNC_NAME}`, { method, cache: "no-store", headers: { "Authorization": "Bearer " + CFG.cloudKey, "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }); }
+  catch(e){ throw Object.assign(new Error("offline"), { code: "offline" }); }
+  if (r.status === 404) throw Object.assign(new Error("old worker"), { code: "old" });
+  if (r.status === 401) throw Object.assign(new Error("key"), { code: "key" });
+  if (r.status !== 200 && r.status !== 409) throw Object.assign(new Error("http " + r.status), { code: "offline" });
+  return { status: r.status, body: await r.json() };
+}
+const canon = o => JSON.stringify(Object.keys(o || {}).sort().map(k => [k, o[k]]));
+function mergeDocs(a, b){
+  const del = {};
+  for (const k of KINDS) { del[k] = {}; for (const src of [a, b]) for (const [id, ts] of Object.entries(((src.deleted || {})[k]) || {})) del[k][id] = Math.max(del[k][id] || 0, ts); }
+  const cutoff = Date.now() - 90 * 864e5;
+  for (const k of KINDS) for (const [id, ts] of Object.entries(del[k])) if (ts < cutoff) delete del[k][id];
+  const out = { deleted: del, seq: { it: Math.max((a.seq || {}).it || 0, (b.seq || {}).it || 0), loc: Math.max((a.seq || {}).loc || 0, (b.seq || {}).loc || 0) } };
+  for (const k of KINDS) {
+    out[k] = {};
+    const A = a[k] || {}, B = b[k] || {};
+    for (const id of new Set([...Object.keys(A), ...Object.keys(B)])) {
+      const x = A[id], y = B[id], pick = !x ? y : !y ? x : ((y.updated || 0) > (x.updated || 0) ? y : x);
+      if (del[k][id] && del[k][id] >= (pick.updated || 0)) continue;
+      out[k][id] = pick;
+    }
+  }
+  return out;
+}
+const docOf = () => ({ items: S.items, locs: S.locs, extras: S.extras, seq: S.seq, deleted: S.deleted || {} });
+function applyDoc(d){
+  Object.assign(S, { items: d.items || {}, locs: d.locs || {}, extras: d.extras || {}, seq: d.seq || { it:0, loc:0 }, deleted: d.deleted || {} });
+  snapshot(); writeAll(); renderAll();
+}
+const same = (m, r) => KINDS.every(k => canon(m[k]) === canon(r[k]) && canon(m.deleted[k]) === canon((r.deleted || {})[k])) && canon(m.seq) === canon(r.seq);
+async function syncNow(){
+  if (!syncOn()) return setSyncStatus("off");
+  if (SYNC.busy) { SYNC.again = true; return; }
+  SYNC.busy = true; clearTimeout(SYNC.timer); setSyncStatus("syncing");
+  stampChanges();
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { body: remote } = await syncReq("GET");
+      let local = docOf();
+      /* A device joining an existing list drops its sample items and places instead of adding them for everyone. */
+      if (!SYNC.everSynced && remote.doc) local = { ...local, items: Object.fromEntries(Object.entries(local.items).filter(([, i]) => !i.example)), locs: Object.fromEntries(Object.entries(local.locs).filter(([, l]) => !l.example)) };
+      const merged = remote.doc ? mergeDocs(local, remote.doc) : local;
+      applyDoc(merged);
+      SYNC.version = remote.version; SYNC.everSynced = true;
+      if (remote.doc && same(merged, remote.doc)) { SYNC.dirty = false; break; }
+      const put = await syncReq("PUT", { baseVersion: remote.version, doc: merged });
+      if (put.status === 200) { SYNC.version = put.body.version; SYNC.dirty = false; break; }
+    }
+    saveSyncMeta(); setSyncStatus(SYNC.dirty ? "offline" : "ok");
+  } catch(e){ setSyncStatus(e.code || "offline"); }
+  SYNC.busy = false;
+  if (SYNC.again) { SYNC.again = false; syncNow(); }
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) syncNow(); });
+window.addEventListener("online", () => syncNow());
+setInterval(() => { if (!document.hidden) syncNow(); }, 30000);
+const connectLink = () => `${location.origin}${location.pathname}#connect=${btoa(JSON.stringify({ u: cloudBase(), k: CFG.cloudKey }))}`;
+function readConnectLink(){
+  const m = location.hash.match(/^#connect=([A-Za-z0-9+/=_-]+)/); if (!m) return false;
+  try { const c = JSON.parse(atob(m[1])); if (c.u && c.k) { CFG.cloudUrl = c.u; CFG.cloudKey = c.k; CFG.sync = true; saveCfg(); SYNC.everSynced = false; SYNC.version = 0; saveSyncMeta(); } } catch(e){}
+  history.replaceState(null, "", location.pathname + location.search);
+  return true;
+}
+/* Photos taken before connecting move online automatically, so other devices can see them. */
+async function uploadPhotosQuietly(){
+  if (!cloudOn() || !Object.values(S.items).some(i => i.hasPhoto && !i.photoUrl)) return;
+  try { const r = await uploadLocalPhotos(); if (r.done) toast(`${r.done} photo${r.done === 1 ? "" : "s"} moved online`); } catch(e){}
+}
+
+
+/* ---------- private list: unlock a new device once ---------- */
+function unlockSheet(){
+  openSheet(`<h2>This list is private</h2>
+    <p class="hint" style="margin:0 0 12px">Open the invite link from a device that's already set up (Settings → Copy link for another device), or enter the household key once. This device remembers it.</p>
+    <label class="full"><span>Household key</span><input type="password" id="u-key" autocomplete="off" placeholder="gs_…"></label>
+    <p class="hint" id="u-msg" style="min-height:1.2em"></p>
+    <div class="actions"><button class="btn" id="u-go">Unlock</button><button class="btn ghost" id="u-local">Use on this device only</button></div>`);
+  $("#u-local").onclick = () => { CFG.localOnly = true; saveCfg(); closeSheet(); };
+  $("#u-go").onclick = async () => {
+    const key = $("#u-key").value.trim(); if (!key) return;
+    $("#u-msg").textContent = "Checking…";
+    try {
+      const j = await (await fetch(cloudBase() + "/ping", { headers: { "Authorization": "Bearer " + key } })).json();
+      if (!j.auth) { $("#u-msg").textContent = "That key isn't right."; return; }
+      CFG.cloudKey = key; CFG.sync = true; delete CFG.localOnly; saveCfg(); SYNC.everSynced = false; SYNC.version = 0; saveSyncMeta();
+      closeSheet(); await syncNow(); toast("Unlocked. This device now shows the shared list.");
+    } catch(e){ $("#u-msg").textContent = "Couldn't reach online storage. Check the internet connection."; }
+  };
+}
+const needsUnlock = () => !!BUILT_IN_CLOUD && !CFG.cloudKey && !CFG.localOnly;
+
+/* ---------- toast & boot ---------- */
+let tt; function toast(m){ const t = $("#toast"); t.textContent = m; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => t.hidden = true, 2800); }
+const joinedByLink = readConnectLink();
+loadAll(); renderAll();
+setSyncStatus(syncOn() ? "syncing" : "off");
+setTimeout(async () => { await syncNow(); if (joinedByLink && SYNC.everSynced) toast("Connected. This device now shows your shared tech list."); uploadPhotosQuietly(); }, 200);
+if (needsUnlock()) unlockSheet();
+const hashTab = location.hash.slice(1);
+if (["scan","net","places","out","list","map"].includes(hashTab)) showTab(hashTab);
+</script>
+</body>
+</html>

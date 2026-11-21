@@ -1,0 +1,16 @@
+# Tech Stock
+
+A phone-friendly inventory for everything electronic at home: network gear, PoE cameras and NVRs, computers, game consoles, video games, TV and A/V, smart home, cables and batteries. Sister app to [Home Stock](https://github.com/mcgillpreston-glitch/shopping) and [Garage Stock](https://github.com/mcgillpreston-glitch/garage).
+
+Live: https://mcgillpreston-glitch.github.io/tech/
+
+- **Departments** modeled on an electronics store: Networking, Security Cameras & NVR, Computers, Phones & Tablets, Gaming, Video Games (by platform), TV & Home Theater, Audio, Smart Home, Cameras & Drones, Movies & Music, Power & Batteries, Cables & Adapters, Install & Repair.
+- **Barcode scanning** of boxes and game cases (looked up on UPCitemdb and Open Products Facts), plus **serial number and MAC address scanning** from device labels (Code 128, Code 39, QR, Data Matrix).
+- **Network & power** on any device: IP, MAC, hostname, firmware, what it's plugged into and which port, PoE it draws or can supply, and which NVR channel records a camera.
+- **Network tab**: connection tree, PoE budget per switch, NVR channel grid, sorted IP list (copy to a spreadsheet), and warnings for duplicate IPs or MACs, ports used twice, switches over their PoE budget, and cameras on the same NVR channel.
+- **Games and discs**: platform, format (disc, cartridge, digital, code), which of your consoles it plays on, and loans with due dates.
+- **Warranties**: shown on each device, flagged 30 days out, listed on the Network tab.
+- **Places and rooms**: rack, TV stand, desk, shelves and bins in each room, with printable QR asset tags (Avery 5160/5163 or plain paper).
+- **Supplies** (batteries, cables, ink) with low levels feed the shopping list.
+- **Insurance list**: Settings → Download insurance list (CSV) with brand, model, serial, price, date, store and warranty.
+- **Private sync** through the same Cloudflare storage as the other apps (`/data/tech`). A new device unlocks once with the household key or the invite link from Settings.
