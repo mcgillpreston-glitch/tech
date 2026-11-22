@@ -446,7 +446,7 @@ nav.tabs button[aria-current="page"]{color:var(--accent);font-weight:600}
     </div>
     <div class="row" style="margin-bottom:14px">
       <label class="btn ghost sm" for="idFile">Identify from photo</label>
-      <input type="file" id="idFile" accept="image/*" capture="environment" hidden>
+      <input type="file" id="idFile" accept="image/*" hidden>
       <label class="btn ghost sm" for="scanFile">Scan QR or barcode from a photo</label>
       <input type="file" id="scanFile" accept="image/*" hidden>
     </div>
@@ -521,7 +521,7 @@ nav.tabs button[aria-current="page"]{color:var(--accent);font-weight:600}
 </div>
 <div class="toast" id="toast" hidden></div>
 <div id="printArea"></div>
-<input type="file" id="rowPhoto" accept="image/*" capture="environment" hidden>
+<input type="file" id="rowPhoto" accept="image/*" hidden>
 <datalist id="roomList"></datalist>
 <datalist id="borrowerList"></datalist>
 
@@ -945,7 +945,7 @@ function openPhoto(id){
   openSheet(`<h2>${esc(it.name)}</h2><div class="meta"><span>${esc(it.category)}</span>${locName(it.locationId) ? `<span>${esc(locName(it.locationId))}</span>` : ""}</div>
     <img class="bigphoto" ${imgSrc(it)} alt="${esc(it.name)}">
     ${it.photoUrl ? `<p class="hint" style="margin:-6px 0 12px">Stored online, visible only in this app.</p>` : cloudOn() ? `<p class="hint" style="margin:-6px 0 12px">Stored on this phone only.</p>` : ""}
-    <div class="actions"><button class="btn" data-a="retake">Retake photo</button><button class="btn ghost" data-a="crop">Crop</button><button class="btn ghost" data-a="item">Open item</button></div>
+    <div class="actions"><button class="btn" data-a="retake">Change photo</button><button class="btn ghost" data-a="crop">Crop</button><button class="btn ghost" data-a="item">Open item</button></div>
     <div class="minor"><button class="link" data-a="remove" style="color:var(--bad)">Remove photo</button><button class="link" data-a="close" style="margin-left:auto">Close</button></div>`);
   $("#sheetCard").onclick = async e => {
     const b = e.target.closest("[data-a]"); if (!b) return;
@@ -1376,7 +1376,7 @@ function openItem(id){
     ${it.department === "Gaming" && CONSOLE_CATS.includes(it.category) ? consoleGamesHTML(it) : ""}
     ${mediaFor(it) ? `<p style="margin:0 0 12px"><button class="btn ghost sm" data-a="media">Media &amp; accessories · ${esc(mediaSummary(mediaFor(it)))}</button></p>` : ""}
     <div class="actions">${actions}</div>
-    <div class="minor"><button class="link" data-a="move">Move</button><button class="link" data-a="edit">Edit</button><button class="link" data-a="fill">Scan to fill details</button>${isDevice(it) ? `<button class="link" data-a="net">Network &amp; power</button>` : ""}<button class="link" data-a="label">Print label</button><button class="link" data-a="snap">${it.hasPhoto ? "Retake photo" : "Take photo"}</button>${replace}<button class="link" data-a="close" style="margin-left:auto">Close</button></div>`);
+    <div class="minor"><button class="link" data-a="move">Move</button><button class="link" data-a="edit">Edit</button><button class="link" data-a="fill">Scan to fill details</button>${isDevice(it) ? `<button class="link" data-a="net">Network &amp; power</button>` : ""}<button class="link" data-a="label">Print label</button><button class="link" data-a="snap">${it.hasPhoto ? "Change photo" : "Add photo"}</button>${replace}<button class="link" data-a="close" style="margin-left:auto">Close</button></div>`);
   $("#sheetCard").onclick = e => {
     const gf = e.target.closest("[data-gf]"); if (gf) return openItem(gf.dataset.gf);
     const b = e.target.closest("[data-a]"); if (!b) return;
@@ -1502,7 +1502,7 @@ function editItem(it, isNew, auto){
       <div class="full fillbar">
         <button type="button" class="btn" id="f-scan">${BAR_SVG}Scan barcode</button>
         <label class="btn ghost" for="f-idfile">${CAM_SVG}Identify from photo</label>
-        <input type="file" id="f-idfile" accept="image/*" capture="environment" hidden>
+        <input type="file" id="f-idfile" accept="image/*" hidden>
       </div>
       <div class="full viewer" id="f-viewer" hidden>
         <video id="f-video" playsinline muted autoplay></video>
@@ -1514,7 +1514,7 @@ function editItem(it, isNew, auto){
       <div class="full suggbar" id="f-sugg" hidden></div>
       <div class="full row" style="align-items:center">
         ${it.hasPhoto ? `<img id="f-photo" ${imgSrc(it)} alt="" style="width:64px;height:64px;border-radius:8px;object-fit:cover">` : `<img id="f-photo" alt="" hidden style="width:64px;height:64px;border-radius:8px;object-fit:cover">`}
-        <label class="btn ghost sm" for="f-file">${it.hasPhoto ? "Change photo" : "Add photo"}</label><input type="file" id="f-file" accept="image/*" capture="environment" hidden><button type="button" class="btn ghost sm" id="f-crop" hidden>Crop</button>
+        <label class="btn ghost sm" for="f-file">${it.hasPhoto ? "Retake photo" : "Take photo"}</label><input type="file" id="f-file" accept="image/*" capture="environment" hidden><label class="btn ghost sm" for="f-upload">Upload</label><input type="file" id="f-upload" accept="image/*" hidden><button type="button" class="btn ghost sm" id="f-crop" hidden>Crop</button>
       </div>
       <label class="full">Name<input type="text" id="f-name" value="${esc(it.name || "")}" placeholder="e.g. Wi-Fi 7 router, Mario Kart World, 65&quot; OLED TV"></label>
       <label>Department<select id="f-dept">${deptOpts}</select></label>
@@ -1647,6 +1647,7 @@ function editItem(it, isNew, auto){
   $("#f-bat").addEventListener("change", () => $("#f-bat").dataset.touched = "1");
   wireLocSelect("#f-loc", "#f-newbox");
   if (it.photoBlob) { usePhoto(it.photoBlob); }
+  $("#f-upload").onchange = async e => { const f = e.target.files[0]; e.target.value = ""; if (!f) return; const c = await cropImage(f); if (c) usePhoto(c); };
   $("#f-file").onchange = async e => { const f = e.target.files[0]; e.target.value = ""; if (!f) return; const c = await cropImage(f); if (c) usePhoto(c); };
   $("#f-crop").onclick = async () => { if (!pendingPhoto) return; const c = await cropImage(pendingPhoto.blob); if (c) usePhoto(c); };
   async function usePhoto(blob){
@@ -1864,7 +1865,7 @@ function slideHTML(it){
     <div><h2>${esc(it.name)}</h2><div class="meta">${bits.map(b => `<span>${b}</span>`).join("")}</div>${loanLine}</div>
     <div class="row">
       ${isTool(it) ? "" : STEP_UNITS.has(it.unit) ? `<button class="btn ghost" data-g="dec">Used one</button><button class="btn ghost" data-g="inc">Added one</button>` : ""}
-      <button class="btn ghost" data-g="snap">${it.hasPhoto ? "Retake photo" : "Take photo"}</button>
+      <button class="btn ghost" data-g="snap">${it.hasPhoto ? "Change photo" : "Add photo"}</button>
       <button class="btn" data-g="open">Open item</button>
       <button class="link" data-g="list">Show in list</button>
     </div></section>`;
