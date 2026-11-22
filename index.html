@@ -233,6 +233,17 @@ details.netbox .form{padding-bottom:12px}
 .iptable tr.bad td{background:var(--bad-soft)}
 .iptable button{border:0;background:none;padding:0;color:var(--ink);font-weight:600;text-align:left}
 .tablewrap{overflow-x:auto}
+/* Photo cropper (full screen, always dark so the photo stands out) */
+.cropper{position:fixed;inset:0;z-index:300;background:#0b0f14;color:#e6edf3;display:flex;flex-direction:column;padding:max(12px,env(safe-area-inset-top)) 16px max(14px,env(safe-area-inset-bottom))}
+.crop-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px;font-size:15px}
+.crop-top span{color:#8d99a6;font-size:13px}
+.crop-stage{flex:1;min-height:0;display:grid;place-items:center;overflow:hidden}
+.crop-stage canvas{touch-action:none;display:block;cursor:crosshair}
+.crop-ratios{justify-content:center;flex-wrap:wrap;margin:12px 0 10px}
+.cropper .chip{background:#1f2630;color:#e6edf3;border-color:#2d3743}
+.cropper .chip[aria-pressed="true"]{background:#3fc1c9;color:#04262a;border-color:#3fc1c9}
+.cropper .btn.ghost{background:#1f2630;color:#e6edf3}
+.crop-btns{gap:8px;flex-wrap:wrap}
 .ctree{border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:12px;margin:0 0 12px}
 .cbranch{border-top:1px solid var(--line);margin-top:10px}
 .cbranch summary{cursor:pointer;padding:10px 0 4px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;list-style:none}
@@ -749,11 +760,97 @@ const photoBtnHTML = (it, act = "act") => it.hasPhoto
   ? `<button class="thumbbtn" data-${act}="photo" aria-label="See photo of ${esc(it.name)}"><img class="thumb" ${imgSrc(it)} alt="${esc(it.name)}"></button>`
   : `<button class="thumbbtn add" data-${act}="snap" aria-label="Take a photo of ${esc(it.name)}">${CAM_SVG}<span>Photo</span></button>`;
 let photoTarget = null;
+/* ---------- crop a photo before it's saved ----------
+   Full-screen: drag the box or its corners, pick a shape (free, square, game case), rotate.
+   Resolves with the cropped picture, the whole picture, or null when cancelled. */
+function cropImage(blob){
+  return new Promise(async resolve => {
+    let bmp; try { bmp = await createImageBitmap(blob); } catch(e){ toast("That photo couldn't be opened."); return resolve(null); }
+    let rot = 0, ratio = 0, W = 0, H = 0, scale = 1, rect = null, drag = null;
+    const el = document.createElement("div"); el.className = "cropper"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Crop photo");
+    el.innerHTML = `<div class="crop-top"><b>Crop photo</b><span>Drag the box or its corners</span></div>
+      <div class="crop-stage"><canvas aria-label="Photo with crop box"></canvas></div>
+      <div class="chips crop-ratios">${[["0","Free"],["1","Square"],["0.75","Game case"],["1.3333","Wide 4:3"]].map(([v, l], i) => `<button class="chip" data-ratio="${v}" aria-pressed="${i === 0}">${l}</button>`).join("")}<button class="chip" data-rot>Rotate ↻</button></div>
+      <div class="row end crop-btns"><button class="btn ghost" data-c="cancel">Cancel</button><button class="btn ghost" data-c="full">Use whole photo</button><button class="btn" data-c="ok">Use crop</button></div>`;
+    document.body.appendChild(el);
+    const cv = el.querySelector("canvas"), ctx = cv.getContext("2d");
+    const srcW = () => rot % 2 ? bmp.height : bmp.width, srcH = () => rot % 2 ? bmp.width : bmp.height;
+    const drawImg = (c, w, h) => { c.save(); c.translate(w / 2, h / 2); c.rotate(rot * Math.PI / 2); const dw = rot % 2 ? h : w, dh = rot % 2 ? w : h; c.drawImage(bmp, -dw / 2, -dh / 2, dw, dh); c.restore(); };
+    const clampRect = r => { r.w = Math.max(30, Math.min(r.w, W)); r.h = Math.max(30, Math.min(r.h, H)); r.x = Math.max(0, Math.min(r.x, W - r.w)); r.y = Math.max(0, Math.min(r.y, H - r.h)); return r; };
+    const fitRatio = r => {
+      if (!ratio) return clampRect(r);
+      let w = r.w, h = r.h; const cx = r.x + w / 2, cy = r.y + h / 2;
+      if (w / h > ratio) w = h * ratio; else h = w / ratio;
+      if (w > W) { w = W; h = w / ratio; } if (h > H) { h = H; w = h * ratio; }
+      return clampRect({ x: cx - w / 2, y: cy - h / 2, w, h });
+    };
+    const corners = () => [[rect.x, rect.y], [rect.x + rect.w, rect.y], [rect.x, rect.y + rect.h], [rect.x + rect.w, rect.y + rect.h]];
+    function draw(){
+      ctx.clearRect(0, 0, W, H); drawImg(ctx, W, H);
+      ctx.fillStyle = "rgba(0,0,0,.6)"; ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.rect(rect.x, rect.y, rect.w, rect.h); ctx.fill("evenodd");
+      ctx.strokeStyle = "rgba(255,255,255,.35)"; ctx.lineWidth = 1; ctx.beginPath();
+      for (let i = 1; i < 3; i++) { ctx.moveTo(rect.x + rect.w * i / 3, rect.y); ctx.lineTo(rect.x + rect.w * i / 3, rect.y + rect.h); ctx.moveTo(rect.x, rect.y + rect.h * i / 3); ctx.lineTo(rect.x + rect.w, rect.y + rect.h * i / 3); }
+      ctx.stroke(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+      ctx.fillStyle = "#fff"; corners().forEach(([x, y]) => ctx.fillRect(x - 7, y - 7, 14, 14));
+    }
+    function layout(keep){
+      const st = el.querySelector(".crop-stage"), old = rect && { x: rect.x / W, y: rect.y / H, w: rect.w / W, h: rect.h / H };
+      scale = Math.min(st.clientWidth / srcW(), st.clientHeight / srcH());
+      W = Math.max(1, Math.round(srcW() * scale)); H = Math.max(1, Math.round(srcH() * scale));
+      const dpr = window.devicePixelRatio || 1; cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + "px"; cv.style.height = H + "px"; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      rect = fitRatio(keep && old ? { x: old.x * W, y: old.y * H, w: old.w * W, h: old.h * H } : { x: W * .05, y: H * .05, w: W * .9, h: H * .9 });
+      draw();
+    }
+    const pos = e => { const b = cv.getBoundingClientRect(); return [Math.max(0, Math.min(W, e.clientX - b.left)), Math.max(0, Math.min(H, e.clientY - b.top))]; };
+    cv.addEventListener("pointerdown", e => {
+      const [px, py] = pos(e), hit = corners().findIndex(([x, y]) => Math.abs(px - x) < 26 && Math.abs(py - y) < 26);
+      if (hit >= 0) { const o = corners()[3 - hit]; drag = { mode: "size", ax: o[0], ay: o[1] }; }
+      else if (px > rect.x && px < rect.x + rect.w && py > rect.y && py < rect.y + rect.h) drag = { mode: "move", dx: px - rect.x, dy: py - rect.y };
+      else drag = { mode: "size", ax: px, ay: py };
+      cv.setPointerCapture(e.pointerId); e.preventDefault();
+    });
+    cv.addEventListener("pointermove", e => {
+      if (!drag) return;
+      const [px, py] = pos(e);
+      if (drag.mode === "move") { rect.x = px - drag.dx; rect.y = py - drag.dy; clampRect(rect); }
+      else {
+        let w = Math.max(30, Math.abs(px - drag.ax)), h = Math.max(30, Math.abs(py - drag.ay));
+        if (ratio) { if (w / h > ratio) w = h * ratio; else h = w / ratio; }
+        rect = clampRect({ x: px < drag.ax ? drag.ax - w : drag.ax, y: py < drag.ay ? drag.ay - h : drag.ay, w, h });
+      }
+      draw();
+    });
+    const up = () => { drag = null; }; cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
+    const onResize = () => layout(true);
+    const onKey = e => { if (e.key === "Escape") { e.preventDefault(); e.stopImmediatePropagation(); finish("cancel"); } };
+    window.addEventListener("resize", onResize); window.addEventListener("keydown", onKey, true);
+    el.addEventListener("click", e => {
+      const r = e.target.closest("[data-ratio]");
+      if (r) { ratio = +r.dataset.ratio; el.querySelectorAll("[data-ratio]").forEach(b => b.setAttribute("aria-pressed", String(b === r))); rect = fitRatio(ratio ? { ...rect } : rect); return draw(); }
+      if (e.target.closest("[data-rot]")) { rot = (rot + 1) % 4; return layout(false); }
+      const c = e.target.closest("[data-c]"); if (c) finish(c.dataset.c);
+    });
+    function finish(kind){
+      el.remove(); window.removeEventListener("resize", onResize); window.removeEventListener("keydown", onKey, true);
+      if (kind === "cancel") return resolve(null);
+      if (kind === "full" && !rot) return resolve(blob);
+      const r = kind === "full" ? { x: 0, y: 0, w: W, h: H } : rect;
+      const t = Math.min(1, 3000 / Math.max(srcW(), srcH()));            // working copy, kept under phone canvas limits
+      const tmp = document.createElement("canvas"); tmp.width = Math.round(srcW() * t); tmp.height = Math.round(srcH() * t); drawImg(tmp.getContext("2d"), tmp.width, tmp.height);
+      const f = t / scale, sx = r.x * f, sy = r.y * f, sw = r.w * f, sh = r.h * f, k = Math.min(1, 1600 / Math.max(sw, sh));
+      const out = document.createElement("canvas"); out.width = Math.max(1, Math.round(sw * k)); out.height = Math.max(1, Math.round(sh * k));
+      out.getContext("2d").drawImage(tmp, sx, sy, sw, sh, 0, 0, out.width, out.height);
+      out.toBlob(b => resolve(b || blob), "image/jpeg", 0.9);
+    }
+    requestAnimationFrame(() => layout(false));
+  });
+}
 function takePhoto(id, after){ photoTarget = { id, after }; $("#rowPhoto").click(); }
 $("#rowPhoto").addEventListener("change", async e => {
-  const f = e.target.files[0]; e.target.value = "";
+  const f0 = e.target.files[0]; e.target.value = "";
   const t = photoTarget; photoTarget = null;
-  if (!f || !t || !S.items[t.id]) return;
+  if (!f0 || !t || !S.items[t.id]) return;
+  const f = await cropImage(f0); if (!f) return;
   try {
     toast("Saving photo…");
     const thumb = await makeThumb(f);
@@ -768,7 +865,7 @@ function openPhoto(id){
   openSheet(`<h2>${esc(it.name)}</h2><div class="meta"><span>${esc(it.category)}</span>${locName(it.locationId) ? `<span>${esc(locName(it.locationId))}</span>` : ""}</div>
     <img class="bigphoto" ${imgSrc(it)} alt="${esc(it.name)}">
     ${it.photoUrl ? `<p class="hint" style="margin:-6px 0 12px">Stored online, visible only in this app.</p>` : cloudOn() ? `<p class="hint" style="margin:-6px 0 12px">Stored on this phone only.</p>` : ""}
-    <div class="actions"><button class="btn" data-a="retake">Retake photo</button><button class="btn ghost" data-a="item">Open item</button></div>
+    <div class="actions"><button class="btn" data-a="retake">Retake photo</button><button class="btn ghost" data-a="crop">Crop</button><button class="btn ghost" data-a="item">Open item</button></div>
     <div class="minor"><button class="link" data-a="remove" style="color:var(--bad)">Remove photo</button><button class="link" data-a="close" style="margin-left:auto">Close</button></div>`);
   $("#sheetCard").onclick = async e => {
     const b = e.target.closest("[data-a]"); if (!b) return;
@@ -776,6 +873,14 @@ function openPhoto(id){
     if (a === "close") return closeSheet();
     if (a === "item") return openItem(id);
     if (a === "retake") return takePhoto(id, () => openPhoto(id));
+    if (a === "crop") {
+      const img = $("#sheetCard .bigphoto"); let blob;
+      try { const r = await fetch(img.currentSrc || img.src); if (!r.ok) throw 0; blob = await r.blob(); } catch(err){ return toast("This picture can't be cropped here. Use Retake photo instead."); }
+      const c = await cropImage(blob); if (!c) return;
+      try { toast("Saving photo…"); const fields = await storePhoto(id, await makeThumb(c), S.items[id].photoUrl); const n = { ...S.items[id], ...fields }; delete n.example; putItem(n); toast("Photo cropped"); }
+      catch(err){ toast("That photo couldn't be saved. Try again."); }
+      return openPhoto(id);
+    }
     if (a === "copy") { const u = S.items[id].photoUrl; try { await navigator.clipboard.writeText(u); toast("Link copied"); } catch(err){ toast(u); } return; }
     if (a === "remove") {
       if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = "Tap again to remove"; return; }
@@ -1312,7 +1417,7 @@ function editItem(it, isNew, auto){
       <div class="full suggbar" id="f-sugg" hidden></div>
       <div class="full row" style="align-items:center">
         ${it.hasPhoto ? `<img id="f-photo" ${imgSrc(it)} alt="" style="width:64px;height:64px;border-radius:8px;object-fit:cover">` : `<img id="f-photo" alt="" hidden style="width:64px;height:64px;border-radius:8px;object-fit:cover">`}
-        <label class="btn ghost sm" for="f-file">${it.hasPhoto ? "Change photo" : "Add photo"}</label><input type="file" id="f-file" accept="image/*" capture="environment" hidden>
+        <label class="btn ghost sm" for="f-file">${it.hasPhoto ? "Change photo" : "Add photo"}</label><input type="file" id="f-file" accept="image/*" capture="environment" hidden><button type="button" class="btn ghost sm" id="f-crop" hidden>Crop</button>
       </div>
       <label class="full">Name<input type="text" id="f-name" value="${esc(it.name || "")}" placeholder="e.g. Wi-Fi 7 router, Mario Kart World, 65&quot; OLED TV"></label>
       <label>Department<select id="f-dept">${deptOpts}</select></label>
@@ -1425,9 +1530,10 @@ function editItem(it, isNew, auto){
   $("#f-bat").addEventListener("change", () => $("#f-bat").dataset.touched = "1");
   wireLocSelect("#f-loc", "#f-newbox");
   if (it.photoBlob) { usePhoto(it.photoBlob); }
-  $("#f-file").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) usePhoto(f); };
+  $("#f-file").onchange = async e => { const f = e.target.files[0]; e.target.value = ""; if (!f) return; const c = await cropImage(f); if (c) usePhoto(c); };
+  $("#f-crop").onclick = async () => { if (!pendingPhoto) return; const c = await cropImage(pendingPhoto.blob); if (c) usePhoto(c); };
   async function usePhoto(blob){
-    try { pendingPhoto = { blob, thumb: await makeThumb(blob) }; pendingRemote = null; $("#f-photo").src = pendingPhoto.thumb; $("#f-photo").hidden = false; }
+    try { pendingPhoto = { blob, thumb: await makeThumb(blob) }; pendingRemote = null; $("#f-photo").src = pendingPhoto.thumb; $("#f-photo").hidden = false; if ($("#f-crop")) $("#f-crop").hidden = false; }
     catch(e){ toast("That photo couldn't be opened."); }
   }
   /* ---- suggestions: filled fields are highlighted; keep, edit, or ignore each one ---- */
