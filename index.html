@@ -1516,7 +1516,7 @@ function editItem(it, isNew, auto){
       const game = gg && !gg.console;
       let sug = { name: game ? cleanGameTitle(cleanTitle(p.name, "", "")) || cleanTitle(p.name, p.brand, p.model) : cleanTitle(p.name, p.brand, p.model), brand: p.brand, model: game ? "" : p.model,
         ...(g ? { department: g.department, category: g.category, kind: g.kind } : {}), ...(gg ? { platform: gg.platform, gtype: gg.gtype || "", format: gg.format || "" } : {}) }, source = p.source;
-      if (CFG.apiKey) {
+      if (claudeOn()) {
         msg(dupNote + `Found on ${esc(p.source)}. Asking Claude to tidy it up…`);
         try { const c = await classifyTitle(p.name, p.hint); sug = { ...sug, ...Object.fromEntries(Object.entries(c).filter(([k, v]) => v)) }; source += " and Claude"; } catch(e){}
       }
@@ -1543,12 +1543,12 @@ function editItem(it, isNew, auto){
     const code = await decodeImage(file);
     if (code) return fillFromCode(code, Promise.resolve(file));
     if (!canIdentify()) return msg("No barcode found in that photo. To identify things from a picture, unlock online storage in Settings (free) or add a Claude API key.");
-    msg(`Looking at the photo${CFG.apiKey ? " with Claude" : ""}… this takes a few seconds.`);
+    msg(`Looking at the photo${claudeOn() ? " with Claude" : ""}… this takes a few seconds.`);
     try {
       const r = await identifyPhoto(file, "");
       if (!$("#f-name")) return;
       if (!r || !r.name) return msg("Couldn't tell what that is. Try a straight-on photo of the front cover or label, in good light.");
-      applySuggest(identityToSug(r, ""), CFG.apiKey ? "Claude (photo)" : "the photo");
+      applySuggest(identityToSug(r, ""), claudeOn() ? "Claude (photo)" : "the photo");
       return msg("Identified from the photo. Check the name and console.");
     } catch(err){ msg(esc((err && err.message) || "Couldn't identify that photo.")); }
   }
@@ -1973,7 +1973,15 @@ document.querySelector("nav.tabs").addEventListener("click", e => { const b = e.
 
 /* ---------- identifying photos ----------
    With a Claude API key, photos go to Claude. Without one, they go to the free AI in your Cloudflare storage. */
-const canIdentify = () => !!CFG.apiKey || cloudOn();
+/* Only a real Anthropic key (sk-ant-…) turns Claude on; anything else in that box is ignored. */
+const claudeOn = () => /^sk-ant-/i.test(String(CFG.apiKey || "").trim());
+const canIdentify = () => claudeOn() || cloudOn();
+/* The household key (gs_…) pasted into the Claude box by mistake: move it to where it belongs. */
+if (CFG.apiKey && !claudeOn()) {
+  const k = String(CFG.apiKey).trim();
+  if (/^gs_/i.test(k) && !CFG.cloudKey) { CFG.cloudKey = k; CFG.sync = true; delete CFG.localOnly; }
+  delete CFG.apiKey; saveCfg();
+}
 async function askCloudVision(prompt, blob){
   let r;
   try { r = await fetch(`${cloudBase()}/identify`, { method:"POST", headers:{ "Authorization":"Bearer " + CFG.cloudKey, "Content-Type":"application/json" }, body: JSON.stringify({ prompt: prompt + "\nReply with only the JSON object, no other text.", image: await toJpegB64(blob, 1024) }) }); }
@@ -2004,7 +2012,8 @@ function parseJSON(t){
   return JSON.parse(t.slice(i, j + 1));
 }
 async function askClaude(prompt, images = []){
-  if (!CFG.apiKey && cloudOn() && images.length) return askCloudVision(prompt, images[0]);
+  if (!claudeOn() && cloudOn() && images.length) return askCloudVision(prompt, images[0]);
+  if (!claudeOn()) throw new Error("Photo identification needs online storage or a Claude API key.");
   const content = [];
   for (const b of images) content.push({ type:"image", source:{ type:"base64", media_type:"image/jpeg", data: await toJpegB64(b) } });
   content.push({ type:"text", text: prompt });
@@ -2013,6 +2022,7 @@ async function askClaude(prompt, images = []){
     headers:{ "content-type":"application/json", "x-api-key":CFG.apiKey, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
     body: JSON.stringify({ model: CFG.model || "claude-sonnet-5-5", max_tokens: 1500, messages:[{ role:"user", content }] })
   });
+  if (!r.ok && cloudOn() && images.length) return askCloudVision(prompt, images[0]);
   if (!r.ok) throw new Error(r.status === 401 ? "Your Claude API key was rejected. Check it in Settings." : r.status === 429 ? "Claude is rate limiting requests. Wait a minute and try again." : "The Claude request failed (error " + r.status + ").");
   const j = await r.json();
   return parseJSON(j.content.map(c => c.text || "").join(""));
@@ -2377,8 +2387,11 @@ function openSettings(){
   };
   $("#s-save").onclick = () => {
     CFG.cloudUrl = $("#s-curl").value.trim().replace(/\/+$/, ""); CFG.cloudKey = $("#s-ckey").value.trim();
-    CFG.apiKey = $("#s-key").value.trim(); CFG.model = $("#s-model").value; saveCfg(); closeSheet();
-    toast(CFG.apiKey ? "Saved. Photo identification is on" : "Saved"); setTimeout(syncNow, 100);
+    const ak = $("#s-key").value.trim();
+    if (ak && /^gs_/i.test(ak)) { toast("That's the household key. It goes in Upload key under Online storage, not the Claude box."); $("#s-key").value = ""; $("#s-key").focus(); return; }
+    if (ak && !/^sk-ant-/i.test(ak)) { toast("A Claude API key starts with sk-ant-. Leave the box empty if you don't have one."); $("#s-key").focus(); return; }
+    CFG.apiKey = ak; CFG.model = $("#s-model").value; saveCfg(); closeSheet();
+    toast(ak ? "Saved. Photos are identified with Claude" : "Saved"); setTimeout(syncNow, 100);
   };
   $("#s-export").onclick = async () => {
     const data = { app:"tech-stock", version:1, exported:new Date().toISOString(), items:S.items, locs:S.locs, extras:S.extras, seq:S.seq, photos: await photoAll() };
