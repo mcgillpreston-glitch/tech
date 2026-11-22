@@ -1302,8 +1302,10 @@ function editItem(it, isNew, auto){
     const p = await lookupProduct(code);
     if (!$("#f-name")) return;
     if (p) {
-      const g = (p.hint && guessCategory(p.hint.split(">").pop())) || guessCategory([p.name, p.hint].join(" "));
-      let sug = { name: cleanTitle(p.name, p.brand, p.model), brand: p.brand, model: p.model, ...(g ? { department: g.department, category: g.category, kind: g.kind } : {}) }, source = p.source;
+      const gg = gameGuess(p.name, p.hint);
+      const g = gg || (p.hint && guessCategory(p.hint.split(">").pop())) || guessCategory([p.name, p.hint].join(" "));
+      let sug = { name: gg ? cleanGameTitle(cleanTitle(p.name, "", "")) || cleanTitle(p.name, p.brand, p.model) : cleanTitle(p.name, p.brand, p.model), brand: p.brand, model: gg ? "" : p.model,
+        ...(g ? { department: g.department, category: g.category, kind: g.kind } : {}), ...(gg && gg.format ? { format: gg.format } : {}) }, source = p.source;
       if (CFG.apiKey) {
         msg(dupNote + `Found on ${esc(p.source)}. Asking Claude to tidy it up…`);
         try { const c = await classifyTitle(p.name, p.hint); sug = { ...sug, ...Object.fromEntries(Object.entries(c).filter(([k, v]) => v)) }; source += " and Claude"; } catch(e){}
@@ -1317,7 +1319,11 @@ function editItem(it, isNew, auto){
       try { const r = await identifyPhoto(img, code); applySuggest(identityToSug(r, code), "Claude reading the label"); return msg(dupNote + "Read from the label by Claude."); }
       catch(err){ return msg(dupNote + esc((err && err.message) || "Claude couldn't read the label.")); }
     }
-    msg(dupNote + `Barcode <span class="mono">${esc(code)}</span> isn't in the free product databases. Type the name${CFG.apiKey ? ", or use Identify from photo" : ""}.`);
+    const web = `<a href="https://www.google.com/search?q=${encodeURIComponent(code)}" target="_blank" rel="noopener">Search the web for this barcode</a>`;
+    msg(dupNote + (lookupBusy
+      ? `The free barcode database has hit its daily limit (about 100 lookups a day). ${web}, then type the name${CFG.apiKey ? ", or snap the front cover with Identify from photo" : ""}.`
+      : `Barcode <span class="mono">${esc(code)}</span> isn't in the free product databases. ${web}, then type the name${CFG.apiKey ? ", or snap the front cover with Identify from photo" : ""}.`)
+      + (cloudOn() ? "" : ` <span class="hint">Connecting online storage in Settings finds far more games.</span>`));
   }
   async function fillFromPhoto(file){
     lastFill = "photo";
@@ -1793,19 +1799,63 @@ Use "supply" only for things that get used up or are kept as a stock count (batt
 }
 
 /* ---------- product lookup for unknown barcodes ---------- */
+/* Barcodes are looked up through your Cloudflare storage: the product databases refuse requests made
+   straight from a web page. Open Products Facts and Open Food Facts allow it, so they're asked from here too. */
+let lookupBusy = false;
 async function lookupProduct(code){
-  try {
-    const r = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`);
-    if (r.ok) { const j = await r.json(); const p = j.items && j.items[0]; if (p && p.title) return { name:p.title, brand:p.brand || "", model:p.model || "", hint:p.category || "", source:"UPCitemdb" }; }
-  } catch(e){}
+  lookupBusy = false;
+  let viaCloud = false;
+  if (cloudOn()) {
+    try {
+      const r = await fetch(`${cloudBase()}/lookup/${encodeURIComponent(code)}`, { headers: { "Authorization": "Bearer " + CFG.cloudKey } });
+      if (r.ok) { const j = await r.json(); viaCloud = true; lookupBusy = !!j.busy; if (j.found && j.name) return { name:j.name, brand:j.brand || "", model:j.model || "", hint:j.hint || "", source:j.source || "UPCitemdb" }; }
+    } catch(e){}
+  }
+  if (!viaCloud) {
+    try {
+      const r = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`);
+      if (r.ok) { const j = await r.json(); const p = j.items && j.items[0]; if (p && p.title) return { name:p.title, brand:p.brand || "", model:p.model || "", hint:p.category || "", source:"UPCitemdb" }; }
+    } catch(e){}
+  }
   for (const host of ["world.openproductsfacts.org", "world.openfoodfacts.org"]) {
     try {
-      const r = await fetch(`https://${host}/api/v2/product/${encodeURIComponent(code)}.json?fields=product_name,brands,quantity`);
+      const r = await fetch(`https://${host}/api/v2/product/${encodeURIComponent(code)}.json?fields=product_name,brands,quantity,categories`);
       if (!r.ok) continue; const j = await r.json(); const p = j.product;
-      if (j.status === 1 && p && (p.product_name || p.brands)) { const brand = (p.brands || "").split(",")[0].trim(); return { name:[brand, p.product_name, p.quantity].filter(Boolean).join(" ").trim(), brand, model:"", hint:"", source:host.replace("world.", "") }; }
+      if (j.status === 1 && p && (p.product_name || p.brands)) { const brand = (p.brands || "").split(",")[0].trim(); return { name:[brand, p.product_name, p.quantity].filter(Boolean).join(" ").trim(), brand, model:"", hint:p.categories || "", source:host.replace("world.", "") }; }
     } catch(e){}
   }
   return null;
+}
+/* Game cases: work out the platform from the listing title ("Gran Turismo 7 - PlayStation 5") and tidy the name. */
+const GAME_PLATS = [
+  [/switch\s*2/i, "Nintendo Switch 2 Games", "cart"],
+  [/nintendo\s*switch|\bswitch\b/i, "Nintendo Switch Games", "cart"],
+  [/playstation\s*5|\bps\s?5\b/i, "PlayStation 5 Games", "disc"],
+  [/playstation\s*4|\bps\s?4\b/i, "PlayStation 4 Games", "disc"],
+  [/xbox\s*series|series\s*x\b/i, "Xbox Series X|S Games", "disc"],
+  [/xbox\s*one/i, "Xbox One Games", "disc"],
+  [/playstation\s*(vr|vr2)|psvr|meta quest|oculus/i, "VR Games", ""],
+  [/nintendo\s*64|\bn64\b|\b3ds\b|\bds\b|game\s*boy|super nintendo|\bsnes\b|\bnes\b|genesis|atari|\bvita\b/i, "Retro Games", "cart"],
+  [/playstation\s*[123]\b|\bps[123]\b|\bpsp\b|gamecube|wii\s*u|\bwii\b|sega|dreamcast|xbox\s*360/i, "Retro Games", "disc"],
+  [/\bpc\b|windows|steam|\bmac\b/i, "PC Games", "disc"]
+];
+const HARDWARE = /\bconsole\b|controller|headset|charging|charger|dualsense|dualshock|joy-?con|amiibo|memory card|storage expansion|\bcase\b|skin|stand|cable|adapter|remote/i;
+function gameGuess(name, hint){
+  const t = `${name || ""} ${hint || ""}`;
+  const softwareHint = /video game software|video games?\b(?!.*(console|accessor))/i.test(hint || "");
+  if (HARDWARE.test(name || "") && !softwareHint) return null;
+  const hit = GAME_PLATS.find(([re]) => re.test(t));
+  if (!hit && !softwareHint) return null;
+  return { department: "Video Games", category: hit ? hit[1] : "Other Games", kind: "tool", format: hit ? hit[2] : "" };
+}
+function cleanGameTitle(t){
+  return String(t || "")
+    .replace(/\s*[-–—:|,]\s*(for\s+)?(sony\s+)?(nintendo\s+switch\s*2|nintendo\s+switch|playstation\s*\d|ps\s?\d|xbox\s+series\s+x\s*(\||\/|and|&)?\s*s|xbox\s+series\s+[xs]|xbox\s+one|xbox\s+360|switch\s*2|switch|pc)\b.*$/i, "")
+    .replace(/\s+for\s+(nintendo\s+switch\s*2?|playstation\s*\d|ps\s?\d|xbox\s+(one|series\s+[xs](\s*[|\/]\s*s)?))\b.*$/i, "")
+    .replace(/\s+(nintendo\s+switch\s*2|nintendo\s+switch|nintendo\s+3?ds|playstation\s*\d|ps\s?\d|xbox\s+series\s+x\s*(\|\s*s)?|xbox\s+one|xbox\s+360|wii\s*u|wii)$/i, "")
+    .replace(/\s*[-–—]\s*nintendo\s+3?ds\b.*$/i, "")
+    .replace(/\s*\b(standard edition|video game|physical edition)\b/ig, "")
+    .replace(/\s*[-–—:|,(]\s*$/, "").replace(/\s{2,}/g, " ").trim();
 }
 
 /* ---------- live camera scanning ---------- */
