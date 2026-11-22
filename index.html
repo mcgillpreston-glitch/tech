@@ -249,6 +249,35 @@ details.netbox .form{padding-bottom:12px}
 .pl-lbl{fill:var(--ink);font-family:var(--display);font-weight:700;text-anchor:middle;pointer-events:none}
 .pl-sub{fill:var(--muted);font-family:var(--body);text-anchor:middle;pointer-events:none}
 #roomHead{margin:4px 0 8px;scroll-margin-top:80px}
+/* Network chart */
+.nethead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.nethead h3{margin:0}
+.nethead .seg{width:150px;flex:none}
+.nethead .seg button{padding:6px 8px;font-size:13px}
+.netchart{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:auto;-webkit-overflow-scrolling:touch;max-height:70vh;
+  background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:16px 16px}
+.netchart svg{display:block}
+.netchart.fit svg{width:100%;height:auto}
+.nc-legend button{margin-left:auto}
+.nc-edge{fill:none;stroke:var(--muted);stroke-width:2}
+.nc-edge.wifi{stroke:var(--accent);stroke-dasharray:5 5}
+.nc-edge.poe{stroke:var(--warn)}
+.nc-elbl{font:600 10px var(--mono);fill:var(--muted);paint-order:stroke;stroke:var(--surface);stroke-width:4px}
+.nc-elbl.wifi{fill:var(--accent)} .nc-elbl.poe{fill:var(--warn)}
+.nc-node{cursor:pointer}
+.nc-box{fill:var(--bg);stroke:var(--line);stroke-width:1.5}
+.nc-node:hover .nc-box,.nc-node:focus-visible .nc-box{stroke:var(--accent);stroke-width:2.5}
+.nc-node.bad .nc-box{stroke:var(--bad);stroke-width:2.5}
+.nc-node.off .nc-box{stroke-dasharray:4 3;opacity:.7}
+.nc-ico{fill:var(--accent-soft)}
+.nc-icot{font:700 10px var(--mono);fill:var(--accent);text-anchor:middle}
+.nc-name{font:600 12px var(--body);fill:var(--ink)}
+.nc-ip{font:500 10.5px var(--mono);fill:var(--muted)}
+.nc-cloud{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5}
+.nc-cloudt{font:700 12px var(--display);fill:var(--accent);text-anchor:middle;letter-spacing:.04em}
+.nc-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:8px 0 0}
+.nc-legend i{display:inline-block;width:22px;height:0;border-top:2px solid var(--muted);vertical-align:middle;margin-right:5px}
+.nc-legend i.wifi{border-top:2px dashed var(--accent)} .nc-legend i.poe{border-top-color:var(--warn)}
 /* Room filter and players */
 .rfilter{display:flex;gap:8px;margin:0 0 8px}
 .rfilter input{flex:1}
@@ -1234,6 +1263,67 @@ $("#consoleTree").addEventListener("click", e => {
 });
 $("#consoleTree").addEventListener("toggle", e => { const d = e.target.closest && e.target.closest("[data-plat]"); if (d) S.openPlat[d.dataset.plat] = d.open; }, true);
 /* ---------- the Network tab ---------- */
+/* ---------- network chart ----------
+   Left to right: the internet, then the modem and router, then everything plugged into or connected to them.
+   Solid lines are cables (with the port), dashed teal lines are Wi-Fi, orange lines carry PoE power. */
+try { S.netView = localStorage.getItem("techstock.netview") || "list"; S.netFit = localStorage.getItem("techstock.netfit") || ""; } catch(e){ S.netView = "list"; }
+function netIcon(d){
+  const c = d.category || "";
+  if (/Modems/.test(c)) return "MDM"; if (/Routers/.test(c)) return "RTR"; if (/PoE Switches/.test(c)) return "PoE"; if (/Switches/.test(c)) return "SW";
+  if (/Mesh|Access Points/.test(c)) return "AP"; if (/NVR/.test(c)) return "NVR"; if (/Cameras/.test(c)) return "CAM"; if (/NAS/.test(c)) return "NAS";
+  if (/Servers|Desktops/.test(c)) return "PC"; if (/Laptops/.test(c)) return "LAP"; if (/TVs/.test(c)) return "TV"; if (/Streaming/.test(c)) return "STR";
+  if (/Printers/.test(c)) return "PRN"; if (/Phones/.test(c)) return "PH"; if (/Tablets/.test(c)) return "TAB"; if (/UPS/.test(c)) return "UPS";
+  if (d.department === "Smart Home") return "HOME"; if (PLAT[d.platform]) return initials(platName(d.platform)).slice(0, 3);
+  return initials(d.name).slice(0, 3) || "•";
+}
+function netChartHTML(netDevs, roots, inNet){
+  const W = 168, H = 50, GX = 54, GY = 12, PAD = 16, ROW = H + GY;
+  const fit = (t, n) => t.length > n ? t.slice(0, n - 1) + "…" : t;
+  const pos = {}, edges = [], seen = new Set(); let row = 0, maxDepth = 0;
+  const internetFed = roots.filter(r => /Modems|Routers/.test(r.category || ""));
+  const off = internetFed.length ? 1 : 0;                      // a column for the internet cloud
+  const place = (d, depth) => {
+    if (seen.has(d.id)) return null; seen.add(d.id);
+    maxDepth = Math.max(maxDepth, depth);
+    const kids = childrenOf(d.id).filter(k => inNet.has(k.id) && !seen.has(k.id));
+    const ys = kids.map(k => { const y = place(k, depth + 1); if (y != null) edges.push([d, k]); return y; }).filter(y => y != null);
+    const y = ys.length ? (ys[0] + ys[ys.length - 1]) / 2 : row++;
+    pos[d.id] = { x: PAD + (depth + off) * (W + GX), y: PAD + y * ROW, d };
+    return y;
+  };
+  roots.forEach(r => place(r, 0));
+  netDevs.filter(d => !seen.has(d.id)).forEach(d => place(d, 0));
+  const issues = netIssues().byItem;
+  const width = PAD * 2 + (maxDepth + 1 + off) * (W + GX) - GX, height = PAD * 2 + Math.max(1, row) * ROW - GY;
+  let g = "";
+  /* internet cloud */
+  if (off) {
+    const ys = internetFed.map(r => pos[r.id].y + H / 2), cy = (Math.min(...ys) + Math.max(...ys)) / 2, cx = PAD + W / 2 - 20;
+    internetFed.forEach(r => { const p = pos[r.id]; g += `<path class="nc-edge" d="M${cx + 46} ${cy} C ${cx + 46 + GX} ${cy}, ${p.x - GX} ${p.y + H / 2}, ${p.x} ${p.y + H / 2}"/>`; });
+    g += `<g aria-label="Internet"><ellipse class="nc-cloud" cx="${cx}" cy="${cy}" rx="46" ry="24"/><text class="nc-cloudt" x="${cx}" y="${cy + 4}">INTERNET</text></g>`;
+  }
+  /* links */
+  for (const [a, b] of edges) {
+    const p = pos[a.id], q = pos[b.id], x1 = p.x + W, y1 = p.y + H / 2, x2 = q.x, y2 = q.y + H / 2, mx = (x1 + x2) / 2;
+    const wifi = onWifi(b), poe = !wifi && num(b.poeW) > 0, cls = wifi ? "wifi" : poe ? "poe" : "";
+    g += `<path class="nc-edge ${cls}" d="M${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}"/>`;
+    const lbl = wifi ? "Wi-Fi" : [b.port ? "p" + b.port : "", poe ? num(b.poeW) + "W" : ""].filter(Boolean).join(" · ");
+    if (lbl) g += `<text class="nc-elbl ${cls}" x="${x2 - 4}" y="${y2 - 5}" text-anchor="end">${esc(lbl)}</text>`;
+  }
+  /* devices */
+  for (const { x, y, d } of Object.values(pos)) {
+    const bad = (issues[d.id] || []).some(m => m.sev === "bad"), offl = d.status && d.status !== "available" && d.status !== "spare";
+    g += `<g class="nc-node${bad ? " bad" : ""}${offl ? " off" : ""}" data-open="${esc(d.id)}" tabindex="0" role="button" aria-label="${esc(d.name)}${d.ip ? ", " + esc(d.ip) : ""}">
+      <title>${esc(d.name)}${d.ip ? " · " + esc(d.ip) : ""}${offl ? " · " + esc(STATUS[d.status] || "") : ""}</title>
+      <rect class="nc-box" x="${x}" y="${y}" width="${W}" height="${H}" rx="9"/>
+      <rect class="nc-ico" x="${x + 7}" y="${y + 9}" width="32" height="32" rx="7"/><text class="nc-icot" x="${x + 23}" y="${y + 29}">${esc(netIcon(d))}</text>
+      <text class="nc-name" x="${x + 46}" y="${y + (d.ip ? 21 : 29)}">${esc(fit(d.name, 19))}</text>
+      ${d.ip ? `<text class="nc-ip" x="${x + 46}" y="${y + 37}">${esc(d.ip)}</text>` : ""}</g>`;
+  }
+  const fitOn = S.netFit === "1";
+  return `<div class="netchart${fitOn ? " fit" : ""}"><svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Network chart">${g}</svg></div>
+    <div class="nc-legend"><span><i></i>Cable</span><span><i class="wifi"></i>Wi-Fi</span><span><i class="poe"></i>PoE power</span><span>Tap a device to open it${fitOn ? "" : " · swipe sideways for more"}</span><button class="link" data-nfit="1">${fitOn ? "Actual size" : "Fit to screen"}</button></div>`;
+}
 function renderNet(){
   const devs = Object.values(S.items).filter(live);
   const netDevs = devs.filter(d => d.ip || d.mac || d.uplink || d.host || num(d.poeBudget) || childrenOf(d.id).length || camerasOn(d.id).length);
@@ -1253,7 +1343,9 @@ function renderNet(){
     };
     roots.forEach(r => walk(r, "", true, 0));
     netDevs.filter(d => !seen.has(d.id)).forEach(d => walk(d, "", true, 0));
-    h += `<div class="netsec"><h3>How it's connected</h3><div class="tree">${rows.join("")}</div></div>`;
+    const chart = S.netView === "chart";
+    h += `<div class="netsec"><div class="nethead"><h3>How it's connected</h3><div class="seg" role="group" aria-label="Show as"><button data-nv="list" aria-pressed="${!chart}">List</button><button data-nv="chart" aria-pressed="${chart}">Chart</button></div></div>
+      ${chart ? netChartHTML(netDevs, roots, inNet) : `<div class="tree">${rows.join("")}</div>`}</div>`;
   }
   const sws = devs.filter(d => num(d.poeBudget) > 0 || childrenOf(d.id).some(c => num(c.poeW)));
   if (sws.length) h += `<div class="netsec"><h3>PoE power</h3>${sws.map(sw => {
@@ -1282,7 +1374,11 @@ function renderNet(){
   if (!h) h = `<div class="empty">No network details yet. Open a router, switch, camera or console, tap <b>Network &amp; power</b>, and add its IP address and what it's plugged into.</div>`;
   $("#netBody").innerHTML = h;
 }
+$("#netBody").addEventListener("keydown", e => { const o = e.target.closest && e.target.closest(".nc-node"); if (o && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openItem(o.dataset.open); } });
 $("#netBody").addEventListener("click", async e => {
+  if (e.target.closest("[data-nfit]")) { S.netFit = S.netFit === "1" ? "" : "1"; try { localStorage.setItem("techstock.netfit", S.netFit); } catch(err){} return renderNet(); }
+  const nv = e.target.closest("[data-nv]");
+  if (nv) { S.netView = nv.dataset.nv; try { localStorage.setItem("techstock.netview", S.netView); } catch(err){} return renderNet(); }
   const o = e.target.closest("[data-open]"); if (o) return openItem(o.dataset.open);
   if (e.target.closest("[data-copy]")) {
     const rows = [["IP", "Device", "Hostname", "MAC", "Plugged into", "Port", "Place"], ...Object.values(S.items).filter(d => live(d) && (d.ip || d.mac)).sort((a, b) => (ipNum(a.ip) ?? 4e9) - (ipNum(b.ip) ?? 4e9))
