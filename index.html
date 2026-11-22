@@ -233,6 +233,13 @@ details.netbox .form{padding-bottom:12px}
 .iptable tr.bad td{background:var(--bad-soft)}
 .iptable button{border:0;background:none;padding:0;color:var(--ink);font-weight:600;text-align:left}
 .tablewrap{overflow-x:auto}
+.ctree{border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:12px;margin:0 0 12px}
+.cbranch{border-top:1px solid var(--line);margin-top:10px}
+.cbranch summary{cursor:pointer;padding:10px 0 4px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;list-style:none}
+.cbranch summary::-webkit-details-marker{display:none}
+.cbranch summary::before{content:"▸";color:var(--muted);font-size:12px;width:10px}
+.cbranch[open] summary::before{content:"▾"}
+.cbranch .tree{border-top:0;margin-left:4px}
 
 .loc{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);width:100%;border-left:0;border-right:0;border-top:0;background:none;text-align:left}
 .loc .count{font-family:var(--display);font-weight:700;font-size:20px;font-variant-numeric:tabular-nums}
@@ -341,6 +348,7 @@ nav.tabs button[aria-current="page"]{color:var(--accent);font-weight:600}
     <div class="catrow"><div class="chips" id="depts"></div><div class="viewtoggle" role="group" aria-label="View"><button id="vw-list" aria-pressed="true">List</button><button id="vw-tiles" aria-pressed="false">Pictures</button></div></div>
     <div class="chips cats" id="cats" hidden></div>
     <div class="answer" id="answer"></div>
+    <div id="consoleTree"></div>
     <div class="shelf" id="shelf"></div>
     <p class="row" id="exampleNote" hidden style="margin-top:14px"><span class="hint">Things and places tagged Example are samples.</span><button class="link" id="clearEx">Remove examples</button></p>
   </section>
@@ -445,7 +453,7 @@ const RAW_TAX = [
   ["Computers","tool",["Desktops","Laptops","Monitors","Keyboards & Mice","Docks & Hubs","Webcams & Headsets","Printers & Scanners","Internal Parts & Upgrades","Drives & SSDs","USB Drives & Memory Cards","Ink & Toner:s"]],
   ["Phones & Tablets","tool",["Phones","Tablets","E-readers","Smartwatches & Wearables","Chargers & Power Banks","Cases & Screen Protectors"]],
   ["Gaming","tool",["Game Consoles","Handheld Consoles","Retro Consoles","Controllers","VR Headsets","Gaming Headsets","Charging Docks & Stands","Gaming Accessories"]],
-  ["Video Games","tool",["PlayStation 5 Games","PlayStation 4 Games","Xbox Series X|S Games","Xbox One Games","Nintendo Switch 2 Games","Nintendo Switch Games","PC Games","Retro Games","VR Games","Other Games"]],
+  ["Video Games","tool",["Nintendo Games","PlayStation Games","Xbox Games","Sega Games","PC Games","VR Games","Other Games"]],
   ["TV & Home Theater","tool",["TVs","Projectors & Screens","AV Receivers & Amps","Soundbars","Speakers","Subwoofers","Streaming Devices","Blu-ray & Media Players","Universal Remotes","TV Mounts"]],
   ["Audio","tool",["Headphones & Earbuds","Bluetooth Speakers","Turntables & Hi-Fi","Microphones","Audio Interfaces & Mixers"]],
   ["Smart Home","tool",["Hubs & Bridges","Smart Speakers & Displays","Smart Lights","Smart Plugs & Switches","Thermostats","Sensors","Smart Locks","Robot Vacuums"]],
@@ -467,6 +475,60 @@ const STATUS = {
   available: "Available", spare: "Spare", loaned: "Loaned out", away: "Away", repair: "Broken", missing: "Missing", retired: "Retired"
 };
 const GAME_FORMATS = { disc:"Disc", cart:"Cartridge", digital:"Digital", code:"Download code" };
+/* ---------- consoles ----------
+   Every console a game can be for. Order matters for matching names: more specific names come first.
+   [id, name, family, usual game format, kind (home / handheld / vr), still current?, name pattern] */
+const PLATFORMS = [
+  ["switch2","Nintendo Switch 2","Nintendo","cart","home",true,/switch\s*2/i],
+  ["switch","Nintendo Switch","Nintendo","cart","home",true,/nintendo\s*switch|\bswitch\b(?!\s*2)/i],
+  ["wiiu","Wii U","Nintendo","disc","home",false,/wii\s*u\b/i],
+  ["wii","Wii","Nintendo","disc","home",false,/\bwii\b/i],
+  ["gc","GameCube","Nintendo","disc","home",false,/game\s*cube|\bngc\b/i],
+  ["n64","Nintendo 64","Nintendo","cart","home",false,/nintendo\s*64|\bn64\b/i],
+  ["snes","Super Nintendo (SNES)","Nintendo","cart","home",false,/super\s*nintendo|\bsnes\b|super\s*famicom/i],
+  ["nes","NES","Nintendo","cart","home",false,/\bnes\b|nintendo\s*entertainment\s*system|famicom/i],
+  ["3ds","Nintendo 3DS","Nintendo","cart","handheld",false,/\b(new\s*)?(2|3)ds\b/i],
+  ["ds","Nintendo DS","Nintendo","cart","handheld",false,/\bds\b|\bdsi\b|ds\s*lite/i],
+  ["gba","Game Boy Advance","Nintendo","cart","handheld",false,/game\s*boy\s*advance|\bgba\b/i],
+  ["gbc","Game Boy Color","Nintendo","cart","handheld",false,/game\s*boy\s*colou?r|\bgbc\b/i],
+  ["gb","Game Boy","Nintendo","cart","handheld",false,/game\s*boy/i],
+  ["psvr2","PlayStation VR2","VR","digital","vr",true,/psvr\s*2|playstation\s*vr\s*2/i],
+  ["quest","Meta Quest","VR","digital","vr",true,/meta\s*quest|oculus|\bquest\s*\d/i],
+  ["tg16","TurboGrafx-16","Other","cart","home",false,/turbografx|pc\s*engine/i],
+  ["ps5","PlayStation 5","PlayStation","disc","home",true,/playstation\s*5|\bps\s?5\b/i],
+  ["ps4","PlayStation 4","PlayStation","disc","home",true,/playstation\s*4|\bps\s?4\b/i],
+  ["ps3","PlayStation 3","PlayStation","disc","home",false,/playstation\s*3|\bps\s?3\b/i],
+  ["ps2","PlayStation 2","PlayStation","disc","home",false,/playstation\s*2|\bps\s?2\b/i],
+  ["vita","PS Vita","PlayStation","cart","handheld",false,/vita/i],
+  ["psp","PSP","PlayStation","disc","handheld",false,/\bpsp\b|playstation\s*portable/i],
+  ["ps1","PlayStation (PS1)","PlayStation","disc","home",false,/playstation(\s*1|\s*one)?\b(?!\s*[2-5])|\bps\s?1\b|\bpsx\b|\bps\s?one\b/i],
+  ["xsx","Xbox Series X|S","Xbox","disc","home",true,/xbox\s*series|series\s*[xs]\b/i],
+  ["xone","Xbox One","Xbox","disc","home",true,/xbox\s*one/i],
+  ["x360","Xbox 360","Xbox","disc","home",false,/xbox\s*360|\bx360\b/i],
+  ["xbox","Xbox (original)","Xbox","disc","home",false,/\bxbox\b/i],
+  ["dc","Dreamcast","Sega","disc","home",false,/dreamcast/i],
+  ["saturn","Sega Saturn","Sega","disc","home",false,/saturn/i],
+  ["genesis","Sega Genesis","Sega","cart","home",false,/genesis|mega\s*drive/i],
+  ["sms","Sega Master System","Sega","cart","home",false,/master\s*system/i],
+  ["gg","Game Gear","Sega","cart","handheld",false,/game\s*gear/i],
+  ["deck","Steam Deck","PC","digital","handheld",true,/steam\s*deck/i],
+  ["pc","PC","PC","digital","home",true,/\bpc\b|windows|\bsteam\b/i],
+  ["2600","Atari 2600","Other","cart","home",false,/atari/i],
+  ["neogeo","Neo Geo","Other","cart","home",false,/neo\s*geo/i],
+  ["other","Other console","Other","","home",false,null]
+].map(([id, name, family, fmt, form, current, re]) => ({ id, name, family, fmt, form, current, re }));
+const PLAT = Object.fromEntries(PLATFORMS.map(p => [p.id, p]));
+const FAMILIES = ["Nintendo","PlayStation","Xbox","Sega","PC","VR","Other"];
+/* Older games that newer consoles play. */
+const COMPAT = { switch2:["switch"], ps5:["ps4"], ps4:[], ps3:["ps1"], ps2:["ps1"], xsx:["xone","x360","xbox"], xone:["x360","xbox"], wiiu:["wii"], wii:["gc"], "3ds":["ds"], ds:["gba"], gba:["gbc","gb"], gbc:["gb"], vita:["psp"], deck:["pc"], psvr2:["ps5"] };
+const platName = id => (PLAT[id] || {}).name || "";
+const platGamesCat = id => (PLAT[id] ? PLAT[id].family : "Other") + " Games";
+const platConsoleCat = id => { const p = PLAT[id]; return !p ? "Game Consoles" : p.form === "vr" ? "VR Headsets" : p.form === "handheld" && p.current ? "Handheld Consoles" : p.current ? "Game Consoles" : "Retro Consoles"; };
+const CONSOLE_CATS = ["Game Consoles","Handheld Consoles","Retro Consoles","VR Headsets"];
+const guessPlatform = text => (PLATFORMS.find(p => p.re && p.re.test(String(text || ""))) || {}).id || "";
+function platformOptions(sel, blank = "Choose a console…"){
+  return `<option value="">${esc(blank)}</option>` + FAMILIES.map(f => `<optgroup label="${esc(f)}">${PLATFORMS.filter(p => p.family === f).map(p => `<option value="${p.id}" ${p.id === sel ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</optgroup>`).join("");
+}
 const UNITS = ["count","pack","box","ft","m","spool","roll","bottle","tube","sheet"];
 const STEP_UNITS = new Set(["count","pack","box","roll","bottle","tube","sheet","spool"]);
 
@@ -498,11 +560,23 @@ function saveAll(){
   writeAll();
   if (changed && typeof markDirty === "function") markDirty();
 }
+const OLD_GAME_CATS = { "PlayStation 5 Games":"ps5", "PlayStation 4 Games":"ps4", "Xbox Series X|S Games":"xsx", "Xbox One Games":"xone", "Nintendo Switch 2 Games":"switch2", "Nintendo Switch Games":"switch", "PC Games":"pc", "VR Games":"quest", "Retro Games":"", "Other Games":"" };
+/* Games and consoles from before the console list get their console filled in (from the old category, or the name). */
+function migrateConsoles(){
+  for (const it of Object.values(S.items)) {
+    if (it.department === "Video Games" && !PLAT[it.platform]) {
+      const p = OLD_GAME_CATS[it.category] || guessPlatform([it.name, it.notes].join(" "));
+      if (p || !validCat(it.department, it.category)) { it.platform = p; it.category = platGamesCat(p); }
+    } else if (it.department === "Gaming" && CONSOLE_CATS.includes(it.category) && !it.platform) {
+      const p = guessPlatform([it.name, it.model].join(" ")); if (p) it.platform = p;
+    }
+  }
+}
 function loadAll(){
   let raw = null;
   try { raw = localStorage.getItem(LS); } catch(e){}
   if (raw) {
-    try { const d = JSON.parse(raw); Object.assign(S, { items:d.items || {}, locs:d.locs || {}, extras:d.extras || {}, seq:d.seq || { it:0, loc:0 }, deleted:d.deleted || {} }); snapshot(); return; }
+    try { const d = JSON.parse(raw); Object.assign(S, { items:d.items || {}, locs:d.locs || {}, extras:d.extras || {}, seq:d.seq || { it:0, loc:0 }, deleted:d.deleted || {} }); snapshot(); migrateConsoles(); return; }
     catch(e){ try { localStorage.setItem(LS + ".unreadable-" + Date.now(), raw); } catch(err){} }
   }
   seedExamples();
@@ -543,10 +617,13 @@ function seedExamples(){
     ["nvr", { kind:"tool", name:"8-channel NVR, 4 TB", department:"Security Cameras & NVR", category:"NVRs & DVRs", brand:"Reolink", model:"RLN8-410", status:"available", locationId:rack.id, ip:"192.168.1.10", uplink:"poe", port:"1", poeW:12, channels:8 }],
     ["cam1", { kind:"tool", name:"Driveway camera", department:"Security Cameras & NVR", category:"PoE IP Cameras", brand:"Reolink", model:"RLC-810A", status:"available", locationId:out.id, ip:"192.168.1.21", uplink:"poe", port:"3", poeW:9, nvr:"nvr", channel:"1" }],
     ["cam2", { kind:"tool", name:"Front door camera", department:"Security Cameras & NVR", category:"PoE IP Cameras", brand:"Reolink", model:"RLC-820A", status:"available", locationId:out.id, ip:"192.168.1.21", uplink:"poe", port:"4", poeW:9, nvr:"nvr", channel:"2", notes:"Same IP as the driveway camera: give one a new address" }],
-    ["ps5", { kind:"tool", name:"PlayStation 5 Pro", department:"Gaming", category:"Game Consoles", brand:"Sony", model:"CFI-7000", status:"available", locationId:tv.id, ip:"192.168.1.40", uplink:"router", port:"4", purchase:{ price:699.99, date:"2025-11-28", store:"Best Buy" }, warrantyUntil:"2026-11-28" }],
+    ["ps5", { kind:"tool", name:"PlayStation 5 Pro", department:"Gaming", category:"Game Consoles", platform:"ps5", brand:"Sony", model:"CFI-7000", status:"available", locationId:tv.id, ip:"192.168.1.40", uplink:"router", port:"4", purchase:{ price:699.99, date:"2025-11-28", store:"Best Buy" }, warrantyUntil:"2026-11-28" }],
     ["tv", { kind:"tool", name:"65\" OLED TV", department:"TV & Home Theater", category:"TVs", brand:"LG", model:"OLED65C4PUA", status:"available", locationId:tv.id, ip:"192.168.1.41", purchase:{ price:1599.99, date:"2024-11-29", store:"Costco" }, warrantyUntil:"2029-11-29" }],
-    ["zelda", { kind:"tool", name:"Zelda: Tears of the Kingdom", department:"Video Games", category:"Nintendo Switch Games", brand:"Nintendo", format:"cart", status:"loaned", locationId:tv.id, loan:{ to:"Jake (nephew)", since:addDays(t,-20), due:addDays(t,-3) } }],
-    ["gt7", { kind:"tool", name:"Gran Turismo 7", department:"Video Games", category:"PlayStation 5 Games", brand:"Sony", format:"disc", status:"available", locationId:tv.id }],
+    ["zelda", { kind:"tool", name:"Zelda: Tears of the Kingdom", department:"Video Games", category:"Nintendo Games", platform:"switch", brand:"Nintendo", format:"cart", status:"loaned", locationId:tv.id, loan:{ to:"Jake (nephew)", since:addDays(t,-20), due:addDays(t,-3) } }],
+    ["gt7", { kind:"tool", name:"Gran Turismo 7", department:"Video Games", category:"PlayStation Games", platform:"ps5", brand:"Sony", format:"disc", status:"available", locationId:tv.id }],
+    ["snes", { kind:"tool", name:"Super Nintendo", department:"Gaming", category:"Retro Consoles", platform:"snes", brand:"Nintendo", model:"SNS-001", status:"available", locationId:tv.id }],
+    ["smw", { kind:"tool", name:"Super Mario World", department:"Video Games", category:"Nintendo Games", platform:"snes", brand:"Nintendo", format:"cart", status:"available", locationId:tv.id }],
+    ["zelda3", { kind:"tool", name:"Zelda: A Link to the Past", department:"Video Games", category:"Nintendo Games", platform:"snes", brand:"Nintendo", format:"cart", status:"available", locationId:tv.id }],
     ["hdmi", { kind:"supply", name:"HDMI 2.1 cable, 6 ft", department:"Cables & Adapters", category:"HDMI Cables", unit:"count", amount:3, threshold:1, restock:2, price:12.99, store:"Amazon", locationId:tv.id }],
     ["aa", { kind:"supply", name:"AA batteries", department:"Power & Batteries", category:"AA & AAA Batteries", unit:"count", amount:2, threshold:4, restock:24, price:17.99, store:"Costco", locationId:tv.id }]
   ];
@@ -713,7 +790,7 @@ function guessCategory(text){
   }
   return best;
 }
-function searchText(it){ return [it.name, it.brand, it.model, it.code, it.barcode, it.category, it.department, locName(it.locationId), (S.locs[it.locationId] || {}).room, it.notes, it.serial, it.ip, it.mac, it.host, it.firmware, it.format && GAME_FORMATS[it.format], it.loan && it.loan.to].join(" ").toLowerCase(); }
+function searchText(it){ return [it.name, it.brand, it.model, it.code, it.barcode, it.category, it.department, locName(it.locationId), (S.locs[it.locationId] || {}).room, it.notes, it.serial, it.ip, it.mac, it.host, it.firmware, it.format && GAME_FORMATS[it.format], platName(it.platform), it.loan && it.loan.to].join(" ").toLowerCase(); }
 function matches(it, q){
   if (!q) return true;
   const hay = searchText(it), hayW = new Set(words(hay));
@@ -771,11 +848,12 @@ function renderGarage(){
   $("#shelf").innerHTML = list.length ? list.map(S.view === "tiles" ? pictureTileHTML : rowHTML).join("") :
     S.q.trim() ? "" : `<div class="empty">${items.length ? "Nothing matches these filters." : "Nothing here yet. Tap Add, or scan the barcode on a box or game case to start."}</div>`;
   $("#exampleNote").hidden = !items.some(i => i.example) && !Object.values(S.locs).some(l => l.example);
+  $("#consoleTree").innerHTML = consoleTreeHTML();
   fillPhotos($("#shelf"));
 }
 function rowHTML(it){
   const loc = locName(it.locationId);
-  const meta = [it.category, loc, isGame(it) && it.format ? GAME_FORMATS[it.format] : ""].filter(Boolean);
+  const meta = [PLAT[it.platform] && (it.department === "Video Games" || CONSOLE_CATS.includes(it.category)) ? platName(it.platform) : it.category, loc, isGame(it) && it.format ? GAME_FORMATS[it.format] : ""].filter(Boolean);
   let right;
   if (isTool(it)) {
     const st = isOverdue(it) ? `<span class="pill overdue">Overdue</span>` : `<span class="pill ${it.status}">${STATUS[it.status] || it.status}</span>`;
@@ -873,19 +951,61 @@ function deviceOptions(sel, selfId, nvrOnly){
   return `<option value="">—</option>` + ds.map(d => `<option value="${esc(d.id)}" ${d.id === sel ? "selected" : ""}>${esc(d.name)}${d.ip ? " · " + esc(d.ip) : ""}</option>`).join("");
 }
 /* Which of your consoles a game plays on (including backward compatibility). */
-const PLAYS = {
-  "PlayStation 5 Games": /playstation\s*5|\bps5\b/i, "PlayStation 4 Games": /playstation\s*[45]|\bps[45]\b/i,
-  "Xbox Series X|S Games": /xbox series/i, "Xbox One Games": /xbox (one|series)/i,
-  "Nintendo Switch 2 Games": /switch\s*2/i, "Nintendo Switch Games": /switch/i
-};
+const consolesOwned = () => Object.values(S.items).filter(i => i.department === "Gaming" && CONSOLE_CATS.includes(i.category) && PLAT[i.platform] && i.status !== "retired");
+const playsOnPlat = (gamePlat, consolePlat) => gamePlat && (gamePlat === consolePlat || (COMPAT[consolePlat] || []).includes(gamePlat));
 function playsOn(g){
-  const re = PLAYS[g.category];
-  const pool = Object.values(S.items).filter(i => isDevice(i) && i.status !== "retired");
-  if (re) return pool.filter(i => /Consoles/.test(i.category) && re.test([i.name, i.model, i.brand].join(" ")));
-  if (g.category === "PC Games") return pool.filter(i => /Desktops|Laptops|Handheld/.test(i.category));
-  if (g.category === "VR Games") return pool.filter(i => /VR Headsets/.test(i.category));
-  return [];
+  if (!g.platform) return [];
+  return consolesOwned().filter(c => playsOnPlat(g.platform, c.platform));
 }
+const gamesFor = plat => Object.values(S.items).filter(i => i.department === "Video Games" && i.platform === plat && i.status !== "retired").sort((a, b) => a.name.localeCompare(b.name));
+function gameNodeHTML(g, last, attr){
+  const st = g.status && g.status !== "available" ? `<span class="pill ${isOverdue(g) ? "overdue" : g.status}">${isOverdue(g) ? "Overdue" : g.status === "loaned" && g.loan ? "With " + esc(g.loan.to) : STATUS[g.status]}</span>` : "";
+  return `<button class="node" ${attr}="${esc(g.id)}"><span class="nm"><span class="branch">${last ? "└─ " : "├─ "}</span><b>${esc(g.name)}</b>${st}</span><span class="addr">${esc(GAME_FORMATS[g.format] || "")}</span></button>`;
+}
+/* The games branch under a console, on the console's own page. */
+function consoleGamesHTML(c){
+  if (!PLAT[c.platform]) return "";
+  const own = gamesFor(c.platform);
+  const older = (COMPAT[c.platform] || []).map(p => [p, gamesFor(p)]).filter(([, g]) => g.length);
+  return `<h3 style="margin-top:4px">${esc(platName(c.platform))} games · ${own.length}</h3>
+    <div class="tree">${own.map((g, k) => gameNodeHTML(g, k === own.length - 1, "data-gf")).join("") || `<p class="hint" style="margin:8px 0">No ${esc(platName(c.platform))} games yet.</p>`}</div>
+    ${older.map(([p, g]) => `<h3>Also plays: ${esc(platName(p))} games · ${g.length}</h3><div class="tree">${g.map((x, k) => gameNodeHTML(x, k === g.length - 1, "data-gf")).join("")}</div>`).join("")}
+    <p style="margin:8px 0 12px"><button class="link" data-a="addgame">+ Add a ${esc(platName(c.platform))} game</button></p>`;
+}
+/* "By console" on the Tech tab: each console as a branch, with its games under it. */
+S.openPlat = S.openPlat || {};
+function consoleTreeHTML(){
+  if (!["Gaming","Video Games"].includes(S.dept) || S.q.trim()) return "";
+  const fam = S.dept === "Video Games" && S.cat !== "All" ? S.cat.replace(/ Games$/, "") : "";
+  const owned = consolesOwned();
+  const plats = PLATFORMS.filter(p => (!fam || p.family === fam) && (owned.some(c => c.platform === p.id) || gamesFor(p.id).length));
+  const branches = plats.map(p => {
+    const cons = owned.filter(c => c.platform === p.id), games = gamesFor(p.id);
+    const lines = [...cons.map(c => `<button class="node" data-ct-open="${esc(c.id)}"><span class="nm"><span class="branch">${games.length ? "├─ " : "└─ "}</span><b>${esc(c.name)}</b><span class="pill net">Console</span>${c.status !== "available" ? `<span class="pill ${c.status}">${STATUS[c.status]}</span>` : ""}</span><span class="addr">${esc(locName(c.locationId))}</span></button>`),
+      ...games.map((g, k) => gameNodeHTML(g, k === games.length - 1, "data-ct-open"))];
+    return `<details class="cbranch" data-plat="${p.id}" ${S.openPlat[p.id] ? "open" : ""}><summary><b>${esc(p.name)}</b><span class="hint">${cons.length ? (cons.length > 1 ? cons.length + " consoles" : "console") : "no console"} · ${games.length} game${games.length === 1 ? "" : "s"}</span></summary>
+      <div class="tree">${lines.join("")}</div>
+      <p class="row" style="margin:8px 0 4px;gap:14px"><button class="link" data-ct-addgame="${p.id}">+ Add a game</button>${cons.length ? "" : `<button class="link" data-ct-addcon="${p.id}">+ Add this console</button>`}</p></details>`;
+  });
+  return `<div class="ctree"><div class="row between" style="align-items:baseline"><h3 style="margin:0">By console</h3><button class="link" data-ct-pick="1">+ Add a console</button></div>
+    ${branches.join("") || `<p class="hint" style="margin:6px 0 0">No consoles or games yet. Add a console, then its games show here as a branch under it.</p>`}</div>`;
+}
+function addConsole(p){ editItem({ name: platName(p) === "Other console" ? "" : platName(p), department:"Gaming", category: platConsoleCat(p), platform: p, kind:"tool", gtype:"console" }, true); }
+function addGame(p){ editItem({ department:"Video Games", category: platGamesCat(p), platform: p, kind:"tool", format: (PLAT[p] || {}).fmt || "" }, true); }
+function pickConsole(){
+  openSheet(`<h2>Add a console</h2><p class="lede">Pick the console. Its games then show as a branch under it.</p>
+    ${FAMILIES.map(f => `<h3>${esc(f)}</h3><div class="chips" style="flex-wrap:wrap">${PLATFORMS.filter(p => p.family === f).map(p => `<button class="chip" data-pp="${p.id}">${esc(p.name)}</button>`).join("")}</div>`).join("")}
+    <div class="row end" style="margin-top:14px"><button class="btn ghost" id="pp-c">Cancel</button></div>`);
+  $("#pp-c").onclick = closeSheet;
+  $("#sheetCard").onclick = e => { const b = e.target.closest("[data-pp]"); if (b) addConsole(b.dataset.pp); };
+}
+$("#consoleTree").addEventListener("click", e => {
+  const o = e.target.closest("[data-ct-open]"); if (o) return openItem(o.dataset.ctOpen);
+  const g = e.target.closest("[data-ct-addgame]"); if (g) return addGame(g.dataset.ctAddgame);
+  const c = e.target.closest("[data-ct-addcon]"); if (c) return addConsole(c.dataset.ctAddcon);
+  if (e.target.closest("[data-ct-pick]")) return pickConsole();
+});
+$("#consoleTree").addEventListener("toggle", e => { const d = e.target.closest && e.target.closest("[data-plat]"); if (d) S.openPlat[d.dataset.plat] = d.open; }, true);
 /* ---------- the Network tab ---------- */
 function renderNet(){
   const devs = Object.values(S.items).filter(live);
@@ -971,6 +1091,8 @@ function openItem(id){
     if (it.status === "away" && it.away) st += ` ${esc(it.away.where)} since ${fmtDate(it.away.since)}`;
     add("Status", st);
     if (num(it.qty) > 1) add("How many", num(it.qty));
+    if (PLAT[it.platform] && (it.department === "Video Games" || CONSOLE_CATS.includes(it.category))) add("Console", esc(platName(it.platform)));
+    else if (PLAT[it.platform] && it.department === "Gaming") add("Works with", esc(platName(it.platform)));
     if (isGame(it)) {
       add("Format", esc(GAME_FORMATS[it.format] || ""));
       const on = playsOn(it);
@@ -1010,9 +1132,11 @@ function openItem(id){
   openSheet(`<div class="ihead">${photoBtnHTML(it, "a")}<div class="main"><span class="tag">${esc(it.code || "")}</span><h2>${esc(it.name)}</h2><div class="meta"><span>${esc(it.department)} › ${esc(it.category)}</span></div></div></div>
     ${(netIssues().byItem[it.id] || []).map(m => `<div class="issue ${m.sev === "warn" ? "warn" : ""}"><i>!</i><span>${esc(m.t)}</span></div>`).join("")}
     <dl class="facts">${facts.join("")}</dl>
+    ${it.department === "Gaming" && CONSOLE_CATS.includes(it.category) ? consoleGamesHTML(it) : ""}
     <div class="actions">${actions}</div>
     <div class="minor"><button class="link" data-a="move">Move</button><button class="link" data-a="edit">Edit</button><button class="link" data-a="fill">Scan to fill details</button>${isDevice(it) ? `<button class="link" data-a="net">Network &amp; power</button>` : ""}<button class="link" data-a="label">Print label</button><button class="link" data-a="snap">${it.hasPhoto ? "Retake photo" : "Take photo"}</button>${replace}<button class="link" data-a="close" style="margin-left:auto">Close</button></div>`);
   $("#sheetCard").onclick = e => {
+    const gf = e.target.closest("[data-gf]"); if (gf) return openItem(gf.dataset.gf);
     const b = e.target.closest("[data-a]"); if (!b) return;
     const cur = S.items[id]; if (!cur) return;
     const a = b.dataset.a;
@@ -1021,6 +1145,7 @@ function openItem(id){
     if (a === "move") return moveItem(cur);
     if (a === "fill") return editItem(cur, false, { scan: true });
     if (a === "goto") return openItem(b.dataset.f);
+    if (a === "addgame") return addGame(cur.platform);
     if (a === "net") return editItem(cur, false, { net: true });
     if (a === "spare" || a === "retire") { setStatus(cur, a === "spare" ? "spare" : "retired"); toast(cur.name + (a === "spare" ? " marked as a spare" : " retired")); return openItem(id); }
     if (a === "label") return openLabels({ items:[id] });
@@ -1149,7 +1274,9 @@ function editItem(it, isNew, auto){
       </div>
       <label class="full">Name<input type="text" id="f-name" value="${esc(it.name || "")}" placeholder="e.g. Wi-Fi 7 router, Mario Kart World, 65&quot; OLED TV"></label>
       <label>Department<select id="f-dept">${deptOpts}</select></label>
-      <label>Category<select id="f-cat"></select></label>
+      <label id="f-gtypebox" hidden>What is it<select id="f-gtype"><option value="console">Console</option><option value="other">Other (controller, headset, accessory…)</option></select></label>
+      <label id="f-platbox" hidden><span id="f-platlbl">Console</span><select id="f-plat">${platformOptions(it.platform)}</select></label>
+      <label id="f-catbox">Category<select id="f-cat"></select></label>
       <label><span id="f-brandlbl">Brand</span><input type="text" id="f-brand" value="${esc(it.brand || "")}"></label>
       <label><span id="f-modellbl">Model</span><input type="text" id="f-model" value="${esc(it.model || "")}"></label>
       <label class="full">Place<select id="f-loc">${locOptions(it.locationId)}</select></label>
@@ -1202,14 +1329,28 @@ function editItem(it, isNew, auto){
 
   let kind = it.kind;
   const showFor = () => {
-    const game = isGame({ department: $("#f-dept").value });
+    const dept = $("#f-dept").value, vg = dept === "Video Games", gm = dept === "Gaming", gt = $("#f-gtype").value;
+    $("#f-gtypebox").hidden = !gm; $("#f-platbox").hidden = !(vg || gm);
+    $("#f-platlbl").textContent = vg ? "Console" : gt === "console" ? "Which console" : "Works with (optional)";
+    $("#f-plat").options[0].textContent = gm && gt === "other" ? "Any / not specific" : "Choose a console…";
+    $("#f-catbox").hidden = vg || (gm && gt === "console");
+    if (gm) [...$("#f-cat").options].forEach(o => o.hidden = (gt === "other") === CONSOLE_CATS.includes(o.value));
+    if (gm && gt === "other" && CONSOLE_CATS.includes($("#f-cat").value)) $("#f-cat").value = [...$("#f-cat").options].find(o => !o.hidden).value;
+    const game = isGame({ department: dept });
     $("#sheetCard").querySelectorAll("[data-only]").forEach(el => el.hidden = (el.dataset.only === "game") !== game);
     $("#f-brandlbl").textContent = game ? "Publisher" : "Brand"; $("#f-modellbl").textContent = game ? "Edition" : "Model";
     if (/^(Networking|Security Cameras)/.test($("#f-dept").value) && $("#f-netbox")) $("#f-netbox").open = true;
   };
   const setKind = k => { kind = k; $("#sheetCard").querySelectorAll("[data-kind]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.kind === k))); $("#sheetCard").querySelectorAll("[data-for]").forEach(el => el.hidden = el.dataset.for !== k); };
   const fillCats = (dept, sel) => { $("#f-cat").innerHTML = catsOf(dept).map(c => `<option ${c.name === sel ? "selected" : ""}>${esc(c.name)}</option>`).join(""); showFor(); };
+  $("#f-gtype").value = it.gtype || (it.department === "Gaming" && it.category && !CONSOLE_CATS.includes(it.category) ? "other" : "console");
   setKind(kind); fillCats(it.department, it.category);
+  $("#f-gtype").onchange = showFor;
+  $("#f-plat").onchange = () => {
+    const p = PLAT[$("#f-plat").value];
+    if (p && $("#f-dept").value === "Video Games" && !$("#f-format").value && p.fmt) $("#f-format").value = p.fmt;
+    if (p && $("#f-dept").value === "Gaming" && $("#f-gtype").value === "console" && !$("#f-name").value.trim()) $("#f-name").value = p.name === "Other console" ? "" : p.name;
+  };
   $("#sheetCard").querySelectorAll("[data-kind]").forEach(b => b.onclick = () => setKind(b.dataset.kind));
   /* Scan the barcode printed next to a serial number or MAC address on a device label. */
   $("#sheetCard").querySelectorAll("[data-scanto]").forEach(b => b.onclick = () => {
@@ -1286,6 +1427,8 @@ function editItem(it, isNew, auto){
       markSugg($("#f-dept").closest("label"), rev, $("#f-dept"), "change");
       markSugg($("#f-cat").closest("label"), rev, $("#f-cat"), "change");
     }
+    if (sug.gtype) set("#f-gtype", sug.gtype);
+    set("#f-plat", sug.platform); showFor();
     set("#f-format", sug.format); set("#f-serial", sug.serial); set("#f-mac", sug.mac); set("#f-unit", sug.unit); set("#f-barcode", sug.barcode);
     updateBar();
   }
@@ -1304,8 +1447,9 @@ function editItem(it, isNew, auto){
     if (p) {
       const gg = gameGuess(p.name, p.hint);
       const g = gg || (p.hint && guessCategory(p.hint.split(">").pop())) || guessCategory([p.name, p.hint].join(" "));
-      let sug = { name: gg ? cleanGameTitle(cleanTitle(p.name, "", "")) || cleanTitle(p.name, p.brand, p.model) : cleanTitle(p.name, p.brand, p.model), brand: p.brand, model: gg ? "" : p.model,
-        ...(g ? { department: g.department, category: g.category, kind: g.kind } : {}), ...(gg && gg.format ? { format: gg.format } : {}) }, source = p.source;
+      const game = gg && !gg.console;
+      let sug = { name: game ? cleanGameTitle(cleanTitle(p.name, "", "")) || cleanTitle(p.name, p.brand, p.model) : cleanTitle(p.name, p.brand, p.model), brand: p.brand, model: game ? "" : p.model,
+        ...(g ? { department: g.department, category: g.category, kind: g.kind } : {}), ...(gg ? { platform: gg.platform, gtype: gg.gtype || "", format: gg.format || "" } : {}) }, source = p.source;
       if (CFG.apiKey) {
         msg(dupNote + `Found on ${esc(p.source)}. Asking Claude to tidy it up…`);
         try { const c = await classifyTitle(p.name, p.hint); sug = { ...sug, ...Object.fromEntries(Object.entries(c).filter(([k, v]) => v)) }; source += " and Claude"; } catch(e){}
@@ -1359,6 +1503,10 @@ function editItem(it, isNew, auto){
       const nz = v => v === "" ? null : num(v);
       Object.assign(n, { qty: Math.max(1, Math.round(num($("#f-qty").value)) || 1),
         purchase: { price: $("#f-tprice").value === "" ? null : num($("#f-tprice").value), date: $("#f-tdate").value, store: $("#f-tstore").value.trim() } });
+      if (n.department === "Video Games") { n.platform = $("#f-plat").value; n.category = platGamesCat(n.platform); }
+      else if (n.department === "Gaming") { n.platform = $("#f-plat").value; if ($("#f-gtype").value === "console") n.category = platConsoleCat(n.platform); }
+      else delete n.platform;
+      delete n.gtype;
       if (isGame(n)) Object.assign(n, { format: $("#f-format").value });
       else Object.assign(n, { serial: cleanSerial($("#f-serial").value), warrantyUntil: $("#f-warranty").value, manualUrl: $("#f-manual").value.trim(),
         ip: $("#f-ip").value.trim(), mac: normMac($("#f-mac").value), host: $("#f-host").value.trim(), firmware: $("#f-fw").value.trim(),
@@ -1792,8 +1940,8 @@ ${code ? "Its barcode was read as " + code + "." : "If a barcode is visible, rea
 Choose department and category ONLY from this list (format "Department > Category"):
 ${TAX_LINES}
 Reply with only JSON:
-{"name": "short name a person would use, e.g. 'Wi-Fi 7 mesh router', 'Mario Kart World', '65\\" OLED TV'", "brand": "brand, or publisher for games, or null", "model": "model number, or edition for games, or null", "serial": "serial number if printed (S/N), or null", "mac": "MAC address if printed, or null", "department": "...", "category": "...", "kind": "tool" or "supply", "format": "for games and movies: disc, cart, digital or code; otherwise null", "unit": "for supplies: one of ${UNITS.join(", ")}; otherwise null", "barcode": "digits or null"}
-Use "supply" only for things that get used up or are kept as a stock count (batteries, cables, connectors, ink). Video games go in Video Games, in the category for their platform. Use null for anything you cannot tell.`, [blob]);
+{"name": "short name a person would use, e.g. 'Wi-Fi 7 mesh router', 'Mario Kart World', '65\\" OLED TV'", "brand": "brand, or publisher for games, or null", "model": "model number, or edition for games, or null", "serial": "serial number if printed (S/N), or null", "mac": "MAC address if printed, or null", "department": "...", "category": "...", "kind": "tool" or "supply", "format": "for games and movies: disc, cart, digital or code; otherwise null", "platform": "for games and consoles, one of: ${PLATFORMS.map(p => p.id + " (" + p.name + ")").join(", ")}; otherwise null", "unit": "for supplies: one of ${UNITS.join(", ")}; otherwise null", "barcode": "digits or null"}
+Use "supply" only for things that get used up or are kept as a stock count (batteries, cables, connectors, ink). Video games go in Video Games, in the category for their console's maker; consoles go in Gaming. Use null for anything you cannot tell.`, [blob]);
   if (!validCat(r.department, r.category)) { const g = guessCategory([r.name, r.category].join(" ")); if (g) Object.assign(r, { department: g.department, category: g.category }); }
   return r;
 }
@@ -1826,27 +1974,18 @@ async function lookupProduct(code){
   }
   return null;
 }
-/* Game cases: work out the platform from the listing title ("Gran Turismo 7 - PlayStation 5") and tidy the name. */
-const GAME_PLATS = [
-  [/switch\s*2/i, "Nintendo Switch 2 Games", "cart"],
-  [/nintendo\s*switch|\bswitch\b/i, "Nintendo Switch Games", "cart"],
-  [/playstation\s*5|\bps\s?5\b/i, "PlayStation 5 Games", "disc"],
-  [/playstation\s*4|\bps\s?4\b/i, "PlayStation 4 Games", "disc"],
-  [/xbox\s*series|series\s*x\b/i, "Xbox Series X|S Games", "disc"],
-  [/xbox\s*one/i, "Xbox One Games", "disc"],
-  [/playstation\s*(vr|vr2)|psvr|meta quest|oculus/i, "VR Games", ""],
-  [/nintendo\s*64|\bn64\b|\b3ds\b|\bds\b|game\s*boy|super nintendo|\bsnes\b|\bnes\b|genesis|atari|\bvita\b/i, "Retro Games", "cart"],
-  [/playstation\s*[123]\b|\bps[123]\b|\bpsp\b|gamecube|wii\s*u|\bwii\b|sega|dreamcast|xbox\s*360/i, "Retro Games", "disc"],
-  [/\bpc\b|windows|steam|\bmac\b/i, "PC Games", "disc"]
-];
-const HARDWARE = /\bconsole\b|controller|headset|charging|charger|dualsense|dualshock|joy-?con|amiibo|memory card|storage expansion|\bcase\b|skin|stand|cable|adapter|remote/i;
+/* Game cases: work out the console from the listing title ("Gran Turismo 7 - PlayStation 5") and tidy the name.
+   A listing for a console itself ("Nintendo Switch 2 Console") is filed as a console instead. */
+const HARDWARE = /controller|headset|charging|charger|dualsense|dualshock|joy-?con|amiibo|memory card|storage expansion|\bcase\b|skin|stand|cable|adapter|remote/i;
+const CONSOLE_WORDS = /\bconsole\b|\bsystem\b|\bbundle\b|handheld|\b(oled|lite|slim|pro|digital edition)\b/i;
 function gameGuess(name, hint){
   const t = `${name || ""} ${hint || ""}`;
   const softwareHint = /video game software|video games?\b(?!.*(console|accessor))/i.test(hint || "");
+  const p = guessPlatform(name) || guessPlatform(hint);
+  if (!softwareHint && p && CONSOLE_WORDS.test(name || "") && !HARDWARE.test(name || "")) return { department: "Gaming", category: platConsoleCat(p), platform: p, kind: "tool", gtype: "console", console: true };
   if (HARDWARE.test(name || "") && !softwareHint) return null;
-  const hit = GAME_PLATS.find(([re]) => re.test(t));
-  if (!hit && !softwareHint) return null;
-  return { department: "Video Games", category: hit ? hit[1] : "Other Games", kind: "tool", format: hit ? hit[2] : "" };
+  if (!p && !softwareHint && !/video game/i.test(t)) return null;
+  return { department: "Video Games", category: platGamesCat(p), platform: p, kind: "tool", format: (PLAT[p] || {}).fmt || "" };
 }
 function cleanGameTitle(t){
   return String(t || "")
@@ -2033,6 +2172,11 @@ function identityToSug(r, code){
   const out = { name: r.name || "", brand: r.brand || "", model: r.model || "", kind: r.kind === "supply" ? "supply" : r.kind === "tool" ? "tool" : "",
     format: GAME_FORMATS[r.format] ? r.format : "", serial: r.serial ? cleanSerial(r.serial) : "", mac: r.mac ? normMac(r.mac) : "", unit: UNITS.includes(r.unit) ? r.unit : "", barcode: code || (r.barcode ? String(r.barcode).replace(/\D/g, "") : "") };
   if (validCat(r.department, r.category)) { out.department = r.department; out.category = r.category; }
+  if (PLAT[r.platform]) {
+    out.platform = r.platform;
+    if (out.department === "Video Games") { out.category = platGamesCat(r.platform); if (!out.format) out.format = PLAT[r.platform].fmt; }
+    if (out.department === "Gaming" && CONSOLE_CATS.includes(out.category)) { out.category = platConsoleCat(r.platform); out.gtype = "console"; }
+  }
   return out;
 }
 /* Shortens a store listing title: drops brackets, the model number and filler words. */
@@ -2049,8 +2193,8 @@ async function classifyTitle(title, hint){
 Turn it into a home electronics inventory entry. Choose department and category ONLY from this list (format "Department > Category"):
 ${TAX_LINES}
 Reply with only JSON:
-{"name": "short name a person would use", "brand": "brand, or publisher for games, or null", "model": "model number, or edition for games, or null", "department": "...", "category": "...", "kind": "tool" or "supply", "format": "for games and movies: disc, cart, digital or code; otherwise null", "unit": "for supplies: one of ${UNITS.join(", ")}; otherwise null"}
-Video games go in Video Games, in the category for their platform.`);
+{"name": "short name a person would use", "brand": "brand, or publisher for games, or null", "model": "model number, or edition for games, or null", "department": "...", "category": "...", "kind": "tool" or "supply", "format": "for games and movies: disc, cart, digital or code; otherwise null", "platform": "for games and consoles, one of: ${PLATFORMS.map(p => p.id + " (" + p.name + ")").join(", ")}; otherwise null", "unit": "for supplies: one of ${UNITS.join(", ")}; otherwise null"}
+Video games go in Video Games, in the category for their console's maker; consoles go in Gaming.`);
   return identityToSug(r, "");
 }
 $("#manualGo").onclick = () => { const v = $("#manualCode").value.trim(); if (v) { stopCam(); handleCode(/^ts-/i.test(v) ? v.toUpperCase() : v.replace(/\s/g, ""), null); } };
@@ -2218,7 +2362,7 @@ function mergeDocs(a, b){
 const docOf = () => ({ items: S.items, locs: S.locs, extras: S.extras, seq: S.seq, deleted: S.deleted || {} });
 function applyDoc(d){
   Object.assign(S, { items: d.items || {}, locs: d.locs || {}, extras: d.extras || {}, seq: d.seq || { it:0, loc:0 }, deleted: d.deleted || {} });
-  snapshot(); writeAll(); renderAll();
+  snapshot(); migrateConsoles(); writeAll(); renderAll();
 }
 const same = (m, r) => KINDS.every(k => canon(m[k]) === canon(r[k]) && canon(m.deleted[k]) === canon((r.deleted || {})[k])) && canon(m.seq) === canon(r.seq);
 async function syncNow(){

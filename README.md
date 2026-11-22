@@ -8,7 +8,8 @@ Live: https://mcgillpreston-glitch.github.io/tech/
 - **Barcode scanning** of boxes and game cases (looked up on UPCitemdb and Open Products Facts), plus **serial number and MAC address scanning** from device labels (Code 128, Code 39, QR, Data Matrix).
 - **Network & power** on any device: IP, MAC, hostname, firmware, what it's plugged into and which port, PoE it draws or can supply, and which NVR channel records a camera.
 - **Network tab**: connection tree, PoE budget per switch, NVR channel grid, sorted IP list (copy to a spreadsheet), and warnings for duplicate IPs or MACs, ports used twice, switches over their PoE budget, and cameras on the same NVR channel.
-- **Games and discs**: platform, format (disc, cartridge, digital, code), which of your consoles it plays on, and loans with due dates.
+- **Consoles and games**: gaming gear is a Console or Other; consoles are picked from a list of 38 (NES to Switch 2, Game Boy to PS Vita, original Xbox to Series X|S, Sega, Atari, PC, VR). Each game has its console, and the Gaming and Video Games views show a By console tree with every console's games as a branch, including older games it can play (PS4 on PS5, Switch on Switch 2, GameCube on Wii…).
+- **Games and discs**: format (disc, cartridge, digital, code), which of your consoles it plays on, and loans with due dates.
 - **Warranties**: shown on each device, flagged 30 days out, listed on the Network tab.
 - **Places and rooms**: rack, TV stand, desk, shelves and bins in each room, with printable QR asset tags (Avery 5160/5163 or plain paper).
 - **Supplies** (batteries, cables, ink) with low levels feed the shopping list.
