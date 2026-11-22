@@ -1719,9 +1719,10 @@ function editItem(it, isNew, auto){
       return msg(dupNote + `Found on ${esc(p.source)}${pic ? ", with a picture" : ""}.`);
     }
     if (canIdentify() && img) {
-      msg(dupNote + "Not in the product databases. Asking Claude to read the label…");
-      try { const r = await identifyPhoto(img, code); applySuggest(identityToSug(r, code), "Claude reading the label"); return msg(dupNote + "Read from the label by Claude."); }
-      catch(err){ return msg(dupNote + esc((err && err.message) || "Claude couldn't read the label.")); }
+      const who = claudeOn() ? "Claude" : "the free photo reader";
+      msg(dupNote + `Not in the product databases. Asking ${who} to read the label…`);
+      try { const r = await identifyPhoto(img, code); applySuggest(identityToSug(r, code), `${who} reading the label`); return msg(dupNote + `Read from the label by ${who}${claudeOn() ? "" : " (free, in your Cloudflare storage)"}. Check the details.`); }
+      catch(err){ return msg(dupNote + esc((err && err.message) || "Couldn't read the label.")); }
     }
     const web = `<a href="https://www.google.com/search?q=${encodeURIComponent(code)}" target="_blank" rel="noopener">Search the web for this barcode</a>`;
     msg(dupNote + (lookupBusy
