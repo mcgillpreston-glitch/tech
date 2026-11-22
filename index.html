@@ -1282,7 +1282,7 @@ function editItem(it, isNew, auto){
         <div class="camtools"><button type="button" class="camtool" id="f-torch" aria-pressed="false" hidden>Light</button><button type="button" class="camtool" id="f-zoom" hidden>1×</button></div>
         <button type="button" class="btn camstop" id="f-camstop">Cancel scan</button>
       </div>
-      <p class="full hint" id="f-msg" style="margin:0">${isNew ? `Scan the barcode on the box or case, or snap a photo, to fill in the details${CFG.apiKey ? "" : ". Identifying from a photo needs a Claude API key in Settings; without one the photo is checked for a barcode"}.` : ""}</p>
+      <p class="full hint" id="f-msg" style="margin:0">${isNew ? `Scan the barcode on the box or case, or snap a photo of the front cover, to fill in the details${canIdentify() ? "" : ". Identifying from a photo needs online storage (Settings) or a Claude API key; without either the photo is only checked for a barcode"}.` : ""}</p>
       <div class="full suggbar" id="f-sugg" hidden></div>
       <div class="full row" style="align-items:center">
         ${it.hasPhoto ? `<img id="f-photo" ${imgSrc(it)} alt="" style="width:64px;height:64px;border-radius:8px;object-fit:cover">` : `<img id="f-photo" alt="" hidden style="width:64px;height:64px;border-radius:8px;object-fit:cover">`}
@@ -1485,33 +1485,32 @@ function editItem(it, isNew, auto){
       const pic = useRemotePhoto(p.image);
       return msg(dupNote + `Found on ${esc(p.source)}${pic ? ", with a picture" : ""}.`);
     }
-    if (CFG.apiKey && img) {
+    if (canIdentify() && img) {
       msg(dupNote + "Not in the product databases. Asking Claude to read the label…");
       try { const r = await identifyPhoto(img, code); applySuggest(identityToSug(r, code), "Claude reading the label"); return msg(dupNote + "Read from the label by Claude."); }
       catch(err){ return msg(dupNote + esc((err && err.message) || "Claude couldn't read the label.")); }
     }
     const web = `<a href="https://www.google.com/search?q=${encodeURIComponent(code)}" target="_blank" rel="noopener">Search the web for this barcode</a>`;
     msg(dupNote + (lookupBusy
-      ? `The free barcode database has hit its daily limit (about 100 lookups a day). ${web}, then type the name${CFG.apiKey ? ", or snap the front cover with Identify from photo" : ""}.`
-      : `Barcode <span class="mono">${esc(code)}</span> isn't in the free product databases. ${web}, then type the name${CFG.apiKey ? ", or snap the front cover with Identify from photo" : ""}.`)
+      ? `The free barcode database has hit its daily limit (about 100 lookups a day). ${web}, then type the name${canIdentify() ? ", or snap the front cover with Identify from photo" : ""}.`
+      : `Barcode <span class="mono">${esc(code)}</span> isn't in the free product databases. ${web}, then type the name${canIdentify() ? ", or snap the front cover with Identify from photo" : ""}.`)
       + (cloudOn() ? "" : ` <span class="hint">Connecting online storage in Settings finds far more games.</span>`));
   }
   async function fillFromPhoto(file){
     lastFill = "photo";
     if (!pendingPhoto && !it.hasPhoto) usePhoto(file);
-    msg("Checking the photo…");
+    msg("Checking the photo for a barcode…");
     const code = await decodeImage(file);
-    if (CFG.apiKey) {
-      msg("Asking Claude what this is…");
-      try {
-        const r = await identifyPhoto(file, code);
-        if (!$("#f-name")) return;
-        applySuggest(identityToSug(r, code), "Claude (photo)");
-        return msg("Identified from the photo.");
-      } catch(err){ msg(esc((err && err.message) || "Claude couldn't identify that photo.")); }
-    }
-    if (code) return fillFromCode(code, null);
-    if (!CFG.apiKey) msg("No barcode found in that photo. To identify items from a picture, add a Claude API key in Settings.");
+    if (code) return fillFromCode(code, Promise.resolve(file));
+    if (!canIdentify()) return msg("No barcode found in that photo. To identify things from a picture, unlock online storage in Settings (free) or add a Claude API key.");
+    msg(`Looking at the photo${CFG.apiKey ? " with Claude" : ""}… this takes a few seconds.`);
+    try {
+      const r = await identifyPhoto(file, "");
+      if (!$("#f-name")) return;
+      if (!r || !r.name) return msg("Couldn't tell what that is. Try a straight-on photo of the front cover or label, in good light.");
+      applySuggest(identityToSug(r, ""), CFG.apiKey ? "Claude (photo)" : "the photo");
+      return msg("Identified from the photo. Check the name and console.");
+    } catch(err){ msg(esc((err && err.message) || "Couldn't identify that photo.")); }
   }
   $("#f-scan").onclick = () => startCam(FORM_CAM, fillFromCode);
   $("#f-camstop").onclick = () => { stopCam(); msg(""); };
@@ -1930,6 +1929,20 @@ function showTab(t){
 }
 document.querySelector("nav.tabs").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) showTab(b.dataset.tab); });
 
+/* ---------- identifying photos ----------
+   With a Claude API key, photos go to Claude. Without one, they go to the free AI in your Cloudflare storage. */
+const canIdentify = () => !!CFG.apiKey || cloudOn();
+async function askCloudVision(prompt, blob){
+  let r;
+  try { r = await fetch(`${cloudBase()}/identify`, { method:"POST", headers:{ "Authorization":"Bearer " + CFG.cloudKey, "Content-Type":"application/json" }, body: JSON.stringify({ prompt: prompt + "\nReply with only the JSON object, no other text.", image: await toJpegB64(blob, 1024) }) }); }
+  catch(e){ throw new Error("Couldn't reach online storage to identify the photo. Check the internet connection."); }
+  if (r.status === 401) throw new Error("Online storage rejected the household key. Check it in Settings.");
+  if (r.status === 404 || r.status === 501) throw new Error("Photo identification isn't switched on in your Cloudflare storage yet. It turns on automatically with the next worker update; try again in a few minutes.");
+  if (r.status === 429) throw new Error("Free photo identification has hit today's limit. It resets at the end of the day (UTC), or add a Claude API key in Settings.");
+  if (!r.ok) throw new Error("Photo identification failed (error " + r.status + "). Try again.");
+  const j = await r.json();
+  return parseJSON(j.text || "");
+}
 /* ---------- Claude (optional API key) ---------- */
 const loadedScripts = {};
 function loadScript(src){
@@ -1949,6 +1962,7 @@ function parseJSON(t){
   return JSON.parse(t.slice(i, j + 1));
 }
 async function askClaude(prompt, images = []){
+  if (!CFG.apiKey && cloudOn() && images.length) return askCloudVision(prompt, images[0]);
   const content = [];
   for (const b of images) content.push({ type:"image", source:{ type:"base64", media_type:"image/jpeg", data: await toJpegB64(b) } });
   content.push({ type:"text", text: prompt });
