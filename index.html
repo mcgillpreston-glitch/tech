@@ -699,6 +699,22 @@ async function storePhoto(id, thumb, prevUrl){
   await photoPut(id, thumb);
   return { hasPhoto:true, photoUrl:"" };
 }
+/* Keeps a product picture found by a barcode lookup: copied into your photo storage when it's connected,
+   otherwise shrunk and kept on this device, or as a plain web link when the shop's server won't share it. */
+async function importPhoto(id, src, prevUrl){
+  if (cloudOn()) {
+    try {
+      const r = await fetch(`${cloudBase()}/import/${id}-${Date.now().toString(36)}`, { method:"POST", headers:{ "Authorization":"Bearer " + CFG.cloudKey, "Content-Type":"application/json" }, body: JSON.stringify({ url: src }) });
+      if (r.ok) { const j = await r.json(); if (prevUrl) cloudDel(prevUrl); photoDel(id); return { hasPhoto:true, photoUrl:j.url }; }
+    } catch(e){}
+  }
+  try {
+    const r = await fetch(src, { mode:"cors" }); if (!r.ok) throw 0;
+    const thumb = await makeThumb(await r.blob());
+    return cloudOn() ? await storePhoto(id, thumb, prevUrl) : (await photoPut(id, thumb), { hasPhoto:true, photoUrl:"" });
+  } catch(e){}
+  return { hasPhoto:true, photoUrl:src };
+}
 async function removePhoto(id){
   const it = S.items[id]; if (!it) return;
   if (it.photoUrl) cloudDel(it.photoUrl);
@@ -1239,11 +1255,11 @@ function setAmount(it){
 }
 
 /* ---------- add / edit form ---------- */
-let pendingPhoto = null;
+let pendingPhoto = null, pendingRemote = null;
 const BAR_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M8 8v8M11 8v8M13.5 8v8M16 8v8"/></svg>`;
 let lastFill = "";
 function editItem(it, isNew, auto){
-  pendingPhoto = null;
+  pendingPhoto = null; pendingRemote = null;
   it = { kind:"tool", qty:1, status:"available", unit:"count", amount:1, threshold:1, restock:1, department:"", category:"", ...it };
   if (!it.department || !validCat(it.department, it.category)) {
     const g = it.name ? guessCategory(it.name) : null;
@@ -1371,7 +1387,7 @@ function editItem(it, isNew, auto){
   if (it.photoBlob) { usePhoto(it.photoBlob); }
   $("#f-file").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) usePhoto(f); };
   async function usePhoto(blob){
-    try { pendingPhoto = { blob, thumb: await makeThumb(blob) }; $("#f-photo").src = pendingPhoto.thumb; $("#f-photo").hidden = false; }
+    try { pendingPhoto = { blob, thumb: await makeThumb(blob) }; pendingRemote = null; $("#f-photo").src = pendingPhoto.thumb; $("#f-photo").hidden = false; }
     catch(e){ toast("That photo couldn't be opened."); }
   }
   /* ---- suggestions: filled fields are highlighted; keep, edit, or ignore each one ---- */
@@ -1433,6 +1449,16 @@ function editItem(it, isNew, auto){
     updateBar();
   }
   const msg = h => { if ($("#f-msg")) $("#f-msg").innerHTML = h; };
+  /* A product picture from the barcode lookup fills the photo until you take your own; Ignore drops it. */
+  function useRemotePhoto(url){
+    if (!url || pendingPhoto || it.hasPhoto || !$("#f-photo")) return false;
+    const img = $("#f-photo"), prevSrc = img.getAttribute("src"), prevHidden = img.hidden;
+    pendingRemote = url; img.src = url; img.hidden = false;
+    img.onerror = () => { if (pendingRemote === url) { pendingRemote = null; img.hidden = true; img.removeAttribute("src"); } };
+    markSugg(img.closest(".row"), () => { pendingRemote = null; if (prevSrc) img.src = prevSrc; else img.removeAttribute("src"); img.hidden = prevHidden; }, $("#f-file"), "change");
+    updateBar();
+    return true;
+  }
   async function fillFromCode(code, frame){
     lastFill = "scan";
     code = String(code).trim();
@@ -1456,7 +1482,8 @@ function editItem(it, isNew, auto){
       }
       if (!$("#f-name")) return;
       applySuggest(sug, source);
-      return msg(dupNote + `Found on ${esc(p.source)}.`);
+      const pic = useRemotePhoto(p.image);
+      return msg(dupNote + `Found on ${esc(p.source)}${pic ? ", with a picture" : ""}.`);
     }
     if (CFG.apiKey && img) {
       msg(dupNote + "Not in the product databases. Asking Claude to read the label…");
@@ -1522,6 +1549,7 @@ function editItem(it, isNew, auto){
     }
     if (isNew) { n.id = newId("it"); n.code = nextCode("it"); }
     if (pendingPhoto) { $("#f-save").disabled = true; Object.assign(n, await storePhoto(n.id, pendingPhoto.thumb, it.photoUrl)); }
+    else if (pendingRemote) { $("#f-save").disabled = true; Object.assign(n, await importPhoto(n.id, pendingRemote, it.photoUrl)); }
     stopCam();
     putItem(n); toast(isNew ? "Added " + n.name : "Saved");
     return n;
@@ -1956,20 +1984,20 @@ async function lookupProduct(code){
   if (cloudOn()) {
     try {
       const r = await fetch(`${cloudBase()}/lookup/${encodeURIComponent(code)}`, { headers: { "Authorization": "Bearer " + CFG.cloudKey } });
-      if (r.ok) { const j = await r.json(); viaCloud = true; lookupBusy = !!j.busy; if (j.found && j.name) return { name:j.name, brand:j.brand || "", model:j.model || "", hint:j.hint || "", source:j.source || "UPCitemdb" }; }
+      if (r.ok) { const j = await r.json(); viaCloud = true; lookupBusy = !!j.busy; if (j.found && j.name) return { name:j.name, brand:j.brand || "", model:j.model || "", hint:j.hint || "", image:j.image || "", source:j.source || "UPCitemdb" }; }
     } catch(e){}
   }
   if (!viaCloud) {
     try {
       const r = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`);
-      if (r.ok) { const j = await r.json(); const p = j.items && j.items[0]; if (p && p.title) return { name:p.title, brand:p.brand || "", model:p.model || "", hint:p.category || "", source:"UPCitemdb" }; }
+      if (r.ok) { const j = await r.json(); const p = j.items && j.items[0]; if (p && p.title) return { name:p.title, brand:p.brand || "", model:p.model || "", hint:p.category || "", image:(p.images || []).find(u => /^https?:/i.test(u)) || "", source:"UPCitemdb" }; }
     } catch(e){}
   }
   for (const host of ["world.openproductsfacts.org", "world.openfoodfacts.org"]) {
     try {
-      const r = await fetch(`https://${host}/api/v2/product/${encodeURIComponent(code)}.json?fields=product_name,brands,quantity,categories`);
+      const r = await fetch(`https://${host}/api/v2/product/${encodeURIComponent(code)}.json?fields=product_name,brands,quantity,categories,image_front_url,image_url`);
       if (!r.ok) continue; const j = await r.json(); const p = j.product;
-      if (j.status === 1 && p && (p.product_name || p.brands)) { const brand = (p.brands || "").split(",")[0].trim(); return { name:[brand, p.product_name, p.quantity].filter(Boolean).join(" ").trim(), brand, model:"", hint:p.categories || "", source:host.replace("world.", "") }; }
+      if (j.status === 1 && p && (p.product_name || p.brands)) { const brand = (p.brands || "").split(",")[0].trim(); return { name:[brand, p.product_name, p.quantity].filter(Boolean).join(" ").trim(), brand, model:"", hint:p.categories || "", image:p.image_front_url || p.image_url || "", source:host.replace("world.", "") }; }
     } catch(e){}
   }
   return null;
