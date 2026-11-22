@@ -159,6 +159,8 @@ textarea{min-height:64px;resize:vertical}
 .form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .form .full{grid-column:1/-1}
 .form label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+.form label.check{flex-direction:row;align-items:center;gap:10px;font-size:15px;color:var(--ink);padding:4px 0;cursor:pointer}
+.form label.check[hidden]{display:none}
 .seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .seg button{border:0;background:var(--surface);padding:9px;font-weight:600;color:var(--muted)}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
@@ -555,7 +557,7 @@ const STATUS = {
 };
 /* Batteries a device takes. Shown for controllers (and remotes, sensors, locks…), linked to battery supplies. */
 const BATTERIES = ["Built-in rechargeable","AA","AAA","C","D","9V","CR2032","CR2025","CR2016","CR2450","CR123A","LR44 / AG13","18650","Other"];
-const BATTERY_CATS = new Set(["Controllers","Universal Remotes","Keyboards & Mice","Sensors","Smart Locks","Thermostats","Wi-Fi Cameras","Doorbell Cameras","VR Headsets","Gaming Headsets","Smart Plugs & Switches","Cameras","Action Cameras","Drones"]);
+const BATTERY_CATS = new Set(["Controllers","Microphones","Universal Remotes","Keyboards & Mice","Sensors","Smart Locks","Thermostats","Wi-Fi Cameras","Doorbell Cameras","VR Headsets","Gaming Headsets","Smart Plugs & Switches","Cameras","Action Cameras","Drones"]);
 /* Usual batteries for a controller, by console. */
 const CONTROLLER_BATTERY = { xsx:["AA",2], xone:["AA",2], x360:["AA",2], wii:["AA",2], wiiu:["AA",2], gc:["AA",2] };
 const looseBattery = b => b && b !== "Built-in rechargeable" && b !== "Other";
@@ -1512,7 +1514,8 @@ function editItem(it, isNew, auto){
       <div class="full form" data-for="tool" style="grid-column:1/-1">
         <label data-only="game">Format<select id="f-format"><option value="">—</option>${Object.entries(GAME_FORMATS).map(([k, v]) => `<option value="${k}" ${k === it.format ? "selected" : ""}>${v}</option>`).join("")}</select></label>
         <label>How many<input type="number" id="f-qty" min="1" step="1" inputmode="numeric" value="${esc(num(it.qty) || 1)}"></label>
-        <label data-only="device" data-bat>Batteries<select id="f-bat"><option value="">None / not needed</option>${BATTERIES.map(b => `<option ${b === it.battery ? "selected" : ""}>${esc(b)}</option>`).join("")}</select></label>
+        <label class="full check" data-only="device" id="f-batbox"><input type="checkbox" id="f-batreq" ${it.battery || (!it.id && BATTERY_CATS.has(it.category)) ? "checked" : ""}> Requires batteries</label>
+        <label data-only="device" data-bat>Battery type<select id="f-bat"><option value="">Choose…</option>${BATTERIES.map(b => `<option ${b === it.battery ? "selected" : ""}>${esc(b)}</option>`).join("")}</select></label>
         <label data-only="device" data-bat>How many batteries<select id="f-batn">${[1,2,3,4,6,8].map(n => `<option ${n === (num(it.batteryQty) || (it.battery ? 1 : 2)) ? "selected" : ""}>${n}</option>`).join("")}</select></label>
         <label data-only="device">Serial number<span class="inbtn"><input type="text" id="f-serial" class="mono" value="${esc(it.serial || "")}" autocapitalize="characters"><button type="button" class="btn ghost" data-scanto="#f-serial" aria-label="Scan the serial number barcode">Scan</button></span></label>
         <label>Price paid ($)<input type="number" id="f-tprice" step="0.01" min="0" inputmode="decimal" value="${esc(p.price ?? "")}"></label>
@@ -1569,7 +1572,8 @@ function editItem(it, isNew, auto){
     $("#sheetCard").querySelectorAll("[data-only]").forEach(el => el.hidden = (el.dataset.only === "game") !== game);
     $("#f-brandlbl").textContent = game ? "Publisher" : "Brand"; $("#f-modellbl").textContent = game ? "Edition" : "Model";
     if (/^(Networking|Security Cameras)/.test($("#f-dept").value) && $("#f-netbox")) $("#f-netbox").open = true;
-    const batOn = !game && kind === "tool" && (BATTERY_CATS.has($("#f-cat").value) || !!$("#f-bat").value) && !(gm && gt === "console");
+    $("#f-batbox").hidden = game || kind !== "tool";
+    const batOn = !game && kind === "tool" && $("#f-batreq").checked;
     $("#sheetCard").querySelectorAll("[data-bat]").forEach(el => el.hidden = !batOn);
     $("#f-batn").closest("label").hidden = !batOn || !looseBattery($("#f-bat").value);
   };
@@ -1599,13 +1603,16 @@ function editItem(it, isNew, auto){
     });
   });
   $("#f-dept").onchange = () => { fillCats($("#f-dept").value); if (isNew) setKind(kindOf($("#f-dept").value, $("#f-cat").value)); };
-  $("#f-cat").onchange = () => { if (isNew) setKind(kindOf($("#f-dept").value, $("#f-cat").value)); presetBattery(); showFor(); };
+  $("#f-cat").onchange = () => { if (isNew) setKind(kindOf($("#f-dept").value, $("#f-cat").value)); if (isNew && !$("#f-batreq").dataset.touched) $("#f-batreq").checked = BATTERY_CATS.has($("#f-cat").value); presetBattery(); showFor(); };
+  /* Ticking "Requires batteries" shows the battery type and count; AA is the usual starting point. */
+  $("#f-batreq").onchange = () => { $("#f-batreq").dataset.touched = "1"; if ($("#f-batreq").checked && !$("#f-bat").value) { $("#f-bat").value = "AA"; $("#f-batn").value = "2"; } showFor(); if ($("#f-batreq").checked) $("#f-bat").focus(); };
   $("#f-bat").onchange = showFor;
   /* A new controller for an Xbox or Wii gets 2 × AA filled in; others default to built-in rechargeable. */
   function presetBattery(){
     if (!isNew || $("#f-bat").dataset.touched || $("#f-cat").value !== "Controllers") return;
     const d = CONTROLLER_BATTERY[$("#f-plat").value];
     $("#f-bat").value = d ? d[0] : "Built-in rechargeable"; if (d) $("#f-batn").value = String(d[1]);
+    if (!$("#f-batreq").dataset.touched) $("#f-batreq").checked = true;
   }
   $("#f-bat").addEventListener("change", () => $("#f-bat").dataset.touched = "1");
   wireLocSelect("#f-loc", "#f-newbox");
@@ -1755,7 +1762,7 @@ function editItem(it, isNew, auto){
       const nz = v => v === "" ? null : num(v);
       Object.assign(n, { qty: Math.max(1, Math.round(num($("#f-qty").value)) || 1),
         purchase: { price: $("#f-tprice").value === "" ? null : num($("#f-tprice").value), date: $("#f-tdate").value, store: $("#f-tstore").value.trim() } });
-      if (!$("#f-bat").closest("label").hidden && $("#f-bat").value) { n.battery = $("#f-bat").value; n.batteryQty = looseBattery(n.battery) ? num($("#f-batn").value) || 1 : null; }
+      if ($("#f-batreq").checked && !$("#f-batbox").hidden && $("#f-bat").value) { n.battery = $("#f-bat").value; n.batteryQty = looseBattery(n.battery) ? num($("#f-batn").value) || 1 : null; }
       else { delete n.battery; delete n.batteryQty; }
       if (n.department === "Video Games") { n.platform = $("#f-plat").value; n.category = platGamesCat(n.platform); }
       else if (n.department === "Gaming") { n.platform = $("#f-plat").value; if ($("#f-gtype").value === "console") n.category = platConsoleCat(n.platform); }
