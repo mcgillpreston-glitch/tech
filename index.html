@@ -474,6 +474,17 @@ const TAX_LINES = TAX.flatMap(t => t.cats.map(c => `${t.d} > ${c.name}`)).join("
 const STATUS = {
   available: "Available", spare: "Spare", loaned: "Loaned out", away: "Away", repair: "Broken", missing: "Missing", retired: "Retired"
 };
+/* Batteries a device takes. Shown for controllers (and remotes, sensors, locks…), linked to battery supplies. */
+const BATTERIES = ["Built-in rechargeable","AA","AAA","C","D","9V","CR2032","CR2025","CR2016","CR2450","CR123A","LR44 / AG13","18650","Other"];
+const BATTERY_CATS = new Set(["Controllers","Universal Remotes","Keyboards & Mice","Sensors","Smart Locks","Thermostats","Wi-Fi Cameras","Doorbell Cameras","VR Headsets","Gaming Headsets","Smart Plugs & Switches","Cameras","Action Cameras","Drones"]);
+/* Usual batteries for a controller, by console. */
+const CONTROLLER_BATTERY = { xsx:["AA",2], xone:["AA",2], x360:["AA",2], wii:["AA",2], wiiu:["AA",2], gc:["AA",2] };
+const looseBattery = b => b && b !== "Built-in rechargeable" && b !== "Other";
+/* Battery supplies you have of a size ("AA" must not match "AAA"). */
+function batterySupplies(size){
+  const re = new RegExp("(^|[^a-z0-9])" + size.split(" / ")[0].replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?![a-z0-9])", "i");
+  return Object.values(S.items).filter(i => i.kind === "supply" && i.department === "Power & Batteries" && re.test(i.name));
+}
 const GAME_FORMATS = { disc:"Disc", cart:"Cartridge", digital:"Digital", code:"Download code" };
 /* ---------- consoles ----------
    Every console a game can be for. Order matters for matching names: more specific names come first.
@@ -806,7 +817,7 @@ function guessCategory(text){
   }
   return best;
 }
-function searchText(it){ return [it.name, it.brand, it.model, it.code, it.barcode, it.category, it.department, locName(it.locationId), (S.locs[it.locationId] || {}).room, it.notes, it.serial, it.ip, it.mac, it.host, it.firmware, it.format && GAME_FORMATS[it.format], platName(it.platform), it.loan && it.loan.to].join(" ").toLowerCase(); }
+function searchText(it){ return [it.name, it.brand, it.model, it.code, it.barcode, it.category, it.department, locName(it.locationId), (S.locs[it.locationId] || {}).room, it.notes, it.serial, it.ip, it.mac, it.host, it.firmware, it.format && GAME_FORMATS[it.format], platName(it.platform), it.battery, it.loan && it.loan.to].join(" ").toLowerCase(); }
 function matches(it, q){
   if (!q) return true;
   const hay = searchText(it), hayW = new Set(words(hay));
@@ -1120,6 +1131,20 @@ function openItem(id){
   add("Where", loc ? `${esc(loc.name)}${loc.room ? ` · ${esc(loc.room)}` : ""}` : `<span class="hint">Not assigned</span>`);
   add(isGame(it) ? "Publisher" : "Brand", esc([it.brand, it.model].filter(Boolean).join(" · ")));
   add("Serial", it.serial ? `<span class="mono">${esc(it.serial)}</span>` : "");
+  if (isDevice(it) && it.battery) {
+    if (!looseBattery(it.battery)) add("Batteries", esc(it.battery));
+    else {
+      const sup = batterySupplies(it.battery), have = sup.reduce((t, x) => t + num(x.amount), 0);
+      add("Batteries", `${num(it.batteryQty) || 1} × ${esc(it.battery)} · ${sup.length
+        ? `${sup.map(x => `<button class="link" data-a="goto" data-f="${esc(x.id)}">${have >= (num(it.batteryQty) || 1) ? `you have ${num(x.amount)}` : `only ${num(x.amount)} left`}</button>`).join(", ")}`
+        : `<button class="link" data-a="addbat">track ${esc(it.battery)} batteries</button>`}`);
+    }
+  }
+  if (it.kind === "supply" && it.department === "Power & Batteries") {
+    const size = BATTERIES.find(b => looseBattery(b) && batterySupplies(b).some(x => x.id === it.id));
+    const users = size ? Object.values(S.items).filter(d => isDevice(d) && d.battery === size && d.status !== "retired") : [];
+    if (users.length) add("Used by", users.map(d => `<button class="link" data-a="goto" data-f="${esc(d.id)}">${esc(d.name)}</button> (${num(d.batteryQty) || 1})`).join(", ") + ` · ${users.reduce((t, d) => t + (num(d.batteryQty) || 1), 0)} for one full swap`);
+  }
   if (isDevice(it)) netFacts(it, add);
   const p = it.purchase || {};
   const price = isTool(it) ? p.price : it.price, store = isTool(it) ? p.store : it.store;
@@ -1162,6 +1187,7 @@ function openItem(id){
     if (a === "fill") return editItem(cur, false, { scan: true });
     if (a === "goto") return openItem(b.dataset.f);
     if (a === "addgame") return addGame(cur.platform);
+    if (a === "addbat") return editItem({ kind:"supply", name: cur.battery + " batteries", department:"Power & Batteries", category: /^CR|LR44/.test(cur.battery) ? "Coin & Button Cells" : /^(AA|AAA)$/.test(cur.battery) ? "AA & AAA Batteries" : "9V & Other Batteries", unit:"count", amount:0, threshold: Math.max(2, num(cur.batteryQty) || 1), restock: 24 }, true);
     if (a === "net") return editItem(cur, false, { net: true });
     if (a === "spare" || a === "retire") { setStatus(cur, a === "spare" ? "spare" : "retired"); toast(cur.name + (a === "spare" ? " marked as a spare" : " retired")); return openItem(id); }
     if (a === "label") return openLabels({ items:[id] });
@@ -1301,6 +1327,8 @@ function editItem(it, isNew, auto){
       <div class="full form" data-for="tool" style="grid-column:1/-1">
         <label data-only="game">Format<select id="f-format"><option value="">—</option>${Object.entries(GAME_FORMATS).map(([k, v]) => `<option value="${k}" ${k === it.format ? "selected" : ""}>${v}</option>`).join("")}</select></label>
         <label>How many<input type="number" id="f-qty" min="1" step="1" inputmode="numeric" value="${esc(num(it.qty) || 1)}"></label>
+        <label data-only="device" data-bat>Batteries<select id="f-bat"><option value="">None / not needed</option>${BATTERIES.map(b => `<option ${b === it.battery ? "selected" : ""}>${esc(b)}</option>`).join("")}</select></label>
+        <label data-only="device" data-bat>How many batteries<select id="f-batn">${[1,2,3,4,6,8].map(n => `<option ${n === (num(it.batteryQty) || (it.battery ? 1 : 2)) ? "selected" : ""}>${n}</option>`).join("")}</select></label>
         <label data-only="device">Serial number<span class="inbtn"><input type="text" id="f-serial" class="mono" value="${esc(it.serial || "")}" autocapitalize="characters"><button type="button" class="btn ghost" data-scanto="#f-serial" aria-label="Scan the serial number barcode">Scan</button></span></label>
         <label>Price paid ($)<input type="number" id="f-tprice" step="0.01" min="0" inputmode="decimal" value="${esc(p.price ?? "")}"></label>
         <label>Bought on<input type="date" id="f-tdate" value="${esc(p.date || "")}"></label>
@@ -1356,16 +1384,20 @@ function editItem(it, isNew, auto){
     $("#sheetCard").querySelectorAll("[data-only]").forEach(el => el.hidden = (el.dataset.only === "game") !== game);
     $("#f-brandlbl").textContent = game ? "Publisher" : "Brand"; $("#f-modellbl").textContent = game ? "Edition" : "Model";
     if (/^(Networking|Security Cameras)/.test($("#f-dept").value) && $("#f-netbox")) $("#f-netbox").open = true;
+    const batOn = !game && kind === "tool" && (BATTERY_CATS.has($("#f-cat").value) || !!$("#f-bat").value) && !(gm && gt === "console");
+    $("#sheetCard").querySelectorAll("[data-bat]").forEach(el => el.hidden = !batOn);
+    $("#f-batn").closest("label").hidden = !batOn || !looseBattery($("#f-bat").value);
   };
-  const setKind = k => { kind = k; $("#sheetCard").querySelectorAll("[data-kind]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.kind === k))); $("#sheetCard").querySelectorAll("[data-for]").forEach(el => el.hidden = el.dataset.for !== k); };
+  const setKind = k => { kind = k; $("#sheetCard").querySelectorAll("[data-kind]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.kind === k))); $("#sheetCard").querySelectorAll("[data-for]").forEach(el => el.hidden = el.dataset.for !== k); if ($("#f-bat")) showFor(); };
   const fillCats = (dept, sel) => { $("#f-cat").innerHTML = catsOf(dept).map(c => `<option ${c.name === sel ? "selected" : ""}>${esc(c.name)}</option>`).join(""); showFor(); };
   $("#f-gtype").value = it.gtype || (it.department === "Gaming" && it.category && !CONSOLE_CATS.includes(it.category) ? "other" : "console");
   setKind(kind); fillCats(it.department, it.category);
-  $("#f-gtype").onchange = showFor;
+  $("#f-gtype").onchange = () => { showFor(); presetBattery(); showFor(); };
   $("#f-plat").onchange = () => {
     const p = PLAT[$("#f-plat").value];
     if (p && $("#f-dept").value === "Video Games" && !$("#f-format").value && p.fmt) $("#f-format").value = p.fmt;
     if (p && $("#f-dept").value === "Gaming" && $("#f-gtype").value === "console" && !$("#f-name").value.trim()) $("#f-name").value = p.name === "Other console" ? "" : p.name;
+    presetBattery(); showFor();
   };
   $("#sheetCard").querySelectorAll("[data-kind]").forEach(b => b.onclick = () => setKind(b.dataset.kind));
   /* Scan the barcode printed next to a serial number or MAC address on a device label. */
@@ -1382,7 +1414,15 @@ function editItem(it, isNew, auto){
     });
   });
   $("#f-dept").onchange = () => { fillCats($("#f-dept").value); if (isNew) setKind(kindOf($("#f-dept").value, $("#f-cat").value)); };
-  $("#f-cat").onchange = () => { if (isNew) setKind(kindOf($("#f-dept").value, $("#f-cat").value)); };
+  $("#f-cat").onchange = () => { if (isNew) setKind(kindOf($("#f-dept").value, $("#f-cat").value)); presetBattery(); showFor(); };
+  $("#f-bat").onchange = showFor;
+  /* A new controller for an Xbox or Wii gets 2 × AA filled in; others default to built-in rechargeable. */
+  function presetBattery(){
+    if (!isNew || $("#f-bat").dataset.touched || $("#f-cat").value !== "Controllers") return;
+    const d = CONTROLLER_BATTERY[$("#f-plat").value];
+    $("#f-bat").value = d ? d[0] : "Built-in rechargeable"; if (d) $("#f-batn").value = String(d[1]);
+  }
+  $("#f-bat").addEventListener("change", () => $("#f-bat").dataset.touched = "1");
   wireLocSelect("#f-loc", "#f-newbox");
   if (it.photoBlob) { usePhoto(it.photoBlob); }
   $("#f-file").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) usePhoto(f); };
@@ -1529,6 +1569,8 @@ function editItem(it, isNew, auto){
       const nz = v => v === "" ? null : num(v);
       Object.assign(n, { qty: Math.max(1, Math.round(num($("#f-qty").value)) || 1),
         purchase: { price: $("#f-tprice").value === "" ? null : num($("#f-tprice").value), date: $("#f-tdate").value, store: $("#f-tstore").value.trim() } });
+      if (!$("#f-bat").closest("label").hidden && $("#f-bat").value) { n.battery = $("#f-bat").value; n.batteryQty = looseBattery(n.battery) ? num($("#f-batn").value) || 1 : null; }
+      else { delete n.battery; delete n.batteryQty; }
       if (n.department === "Video Games") { n.platform = $("#f-plat").value; n.category = platGamesCat(n.platform); }
       else if (n.department === "Gaming") { n.platform = $("#f-plat").value; if ($("#f-gtype").value === "console") n.category = platConsoleCat(n.platform); }
       else delete n.platform;
