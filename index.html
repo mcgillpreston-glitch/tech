@@ -247,6 +247,18 @@ details.netbox .form{padding-bottom:12px}
 .pl-lbl{fill:var(--ink);font-family:var(--display);font-weight:700;text-anchor:middle;pointer-events:none}
 .pl-sub{fill:var(--muted);font-family:var(--body);text-anchor:middle;pointer-events:none}
 #roomHead{margin:4px 0 8px;scroll-margin-top:80px}
+/* Room filter and players */
+.rfilter{display:flex;gap:8px;margin:0 0 8px}
+.rfilter input{flex:1}
+.players{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.player{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:7px 10px;text-align:left;font-size:13px;min-width:0}
+.player b{font-weight:600}
+.player small{display:block;color:var(--muted);font-size:12px}
+.player .pi{width:30px;height:30px;border-radius:7px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font:700 11px var(--mono);flex:none}
+.ztile.dim{opacity:.25}
+.qrlist{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.qrhit{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 12px;text-align:left;width:100%;color:var(--ink)}
+.qrhit small{display:block;color:var(--muted);font-family:var(--mono);font-size:11px;overflow-wrap:anywhere}
 /* Layout editor (full screen) */
 .planner{position:fixed;inset:0;z-index:250;background:var(--bg);color:var(--ink);display:flex;flex-direction:column}
 .pl-top{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:max(10px,env(safe-area-inset-top)) 16px 8px;font-size:16px}
@@ -433,7 +445,7 @@ nav.tabs button[aria-current="page"]{color:var(--accent);font-weight:600}
     <div class="row" style="margin-bottom:14px">
       <label class="btn ghost sm" for="idFile">Identify from photo</label>
       <input type="file" id="idFile" accept="image/*" capture="environment" hidden>
-      <label class="link" for="scanFile" style="cursor:pointer">Read a barcode from a photo</label>
+      <label class="btn ghost sm" for="scanFile">Scan QR or barcode from a photo</label>
       <input type="file" id="scanFile" accept="image/*" hidden>
     </div>
     <div class="status" id="scanStatus"></div>
@@ -457,6 +469,8 @@ nav.tabs button[aria-current="page"]{color:var(--accent);font-weight:600}
     <div id="planBox"></div>
     <div class="chips" id="mapWalls"></div>
     <h3 id="roomHead"></h3>
+    <div class="rfilter"><input type="search" id="roomQ" placeholder="Filter: name, console, HDMI, serial…" aria-label="Filter things in this room"><select id="roomDept" aria-label="Filter by department" style="width:auto;max-width:44%"></select></div>
+    <div class="players" id="players"></div>
     <div class="roomgrid" id="wallUp"></div>
     <p class="hint" id="mapHint" style="margin:8px 0 0"></p>
     <div id="mapLooseBox" hidden><h3>Not in a place yet</h3><div class="loose" id="mapLoose"></div></div>
@@ -1343,6 +1357,7 @@ function openItem(id){
     ${(netIssues().byItem[it.id] || []).map(m => `<div class="issue ${m.sev === "warn" ? "warn" : ""}"><i>!</i><span>${esc(m.t)}</span></div>`).join("")}
     <dl class="facts">${facts.join("")}</dl>
     ${it.department === "Gaming" && CONSOLE_CATS.includes(it.category) ? consoleGamesHTML(it) : ""}
+    ${mediaFor(it) ? `<p style="margin:0 0 12px"><button class="btn ghost sm" data-a="media">Media &amp; accessories · ${esc(mediaSummary(mediaFor(it)))}</button></p>` : ""}
     <div class="actions">${actions}</div>
     <div class="minor"><button class="link" data-a="move">Move</button><button class="link" data-a="edit">Edit</button><button class="link" data-a="fill">Scan to fill details</button>${isDevice(it) ? `<button class="link" data-a="net">Network &amp; power</button>` : ""}<button class="link" data-a="label">Print label</button><button class="link" data-a="snap">${it.hasPhoto ? "Retake photo" : "Take photo"}</button>${replace}<button class="link" data-a="close" style="margin-left:auto">Close</button></div>`);
   $("#sheetCard").onclick = e => {
@@ -1356,6 +1371,7 @@ function openItem(id){
     if (a === "fill") return editItem(cur, false, { scan: true });
     if (a === "goto") return openItem(b.dataset.f);
     if (a === "addgame") return addGame(cur.platform);
+    if (a === "media") return openMedia(id);
     if (a === "addbat") return editItem({ kind:"supply", name: cur.battery + " batteries", department:"Power & Batteries", category: /^CR|LR44/.test(cur.battery) ? "Coin & Button Cells" : /^(AA|AAA)$/.test(cur.battery) ? "AA & AAA Batteries" : "9V & Other Batteries", unit:"count", amount:0, threshold: Math.max(2, num(cur.batteryQty) || 1), restock: 24 }, true);
     if (a === "net") return editItem(cur, false, { net: true });
     if (a === "spare" || a === "retire") { setStatus(cur, a === "spare" ? "spare" : "retired"); toast(cur.name + (a === "spare" ? " marked as a spare" : " retired")); return openItem(id); }
@@ -1970,11 +1986,76 @@ function tileHTML(it){
   const st = isTool(it) && it.status && it.status !== "available" ? it.status : "";
   return `<button class="ztile ${gone(it) ? "gone" : ""}" data-item="${esc(it.id)}" aria-label="${esc(it.name)}">${it.hasPhoto ? `<img ${imgSrc(it)} alt="">` : `<span class="zph">${esc(initials(it.category || it.name))}</span>`}${st ? `<span class="zst ${st}">${SHORT[st] || ""}</span>` : isLow(it) ? `<span class="zst low">Low</span>` : ""}<span class="zcap">${esc(it.name)}</span></button>`;
 }
+/* ---------- filtering the room you're in ---------- */
+S.rf = { q: "", dept: "" };
+const rfOn = () => !!(S.rf.q.trim() || S.rf.dept);
+function rfMatch(it){
+  if (S.rf.dept && it.department !== S.rf.dept) return false;
+  const q = S.rf.q.trim().toLowerCase();
+  return !q || q.split(/\s+/).every(w => searchText(it).includes(w));
+}
+/* ---------- media & accessories for consoles and players ----------
+   A console's games (and older games it plays), the movies or music a player can play, and the controllers,
+   headsets and other gear that work with it. */
+const MOVIE_CONSOLES = { ps5:"bd", ps4:"bd", ps3:"bd", xsx:"bd", xone:"bd", x360:"dvd", ps2:"dvd", xbox:"dvd" };
+function mediaFor(d){
+  if (!d || !isDevice(d)) return null;
+  const nm = [d.name, d.model].join(" ").toLowerCase(), out = { games: [], older: [], movies: [], music: [], acc: [] };
+  const live = i => i.status !== "retired";
+  const isCon = d.department === "Gaming" && CONSOLE_CATS.includes(d.category) && PLAT[d.platform];
+  let discs = "";
+  if (isCon) {
+    out.games = gamesFor(d.platform);
+    out.older = (COMPAT[d.platform] || []).flatMap(p => gamesFor(p));
+    out.acc = Object.values(S.items).filter(i => live(i) && i.id !== d.id && i.department === "Gaming" && !CONSOLE_CATS.includes(i.category) && i.platform && playsOnPlat(i.platform, d.platform));
+    if (!/digital/.test(nm)) discs = MOVIE_CONSOLES[d.platform] || "";
+  } else if (d.category === "Blu-ray & Media Players") discs = /dvd/.test(nm) && !/blu/.test(nm) ? "dvd" : "bd";
+  else if (d.category === "Turntables & Hi-Fi") out.music = Object.values(S.items).filter(i => live(i) && i.department === "Movies & Music" && (/vinyl/i.test(i.category) || (/\bcd\b|cd player/.test(nm) && /CDs/.test(i.category))));
+  else return null;
+  if (discs) out.movies = Object.values(S.items).filter(i => live(i) && i.department === "Movies & Music" && (i.category === "DVDs" || (discs === "bd" && /Blu-ray/.test(i.category))));
+  if (d.category === "Blu-ray & Media Players") out.music = Object.values(S.items).filter(i => live(i) && i.category === "CDs");
+  const byName = (a, b) => a.name.localeCompare(b.name);
+  Object.values(out).forEach(a => a.sort(byName));
+  out.total = out.games.length + out.older.length + out.movies.length + out.music.length + out.acc.length;
+  out.console = !!isCon;
+  return out;
+}
+function mediaSummary(m){
+  const parts = [];
+  if (m.console) parts.push(`${m.games.length + m.older.length} game${m.games.length + m.older.length === 1 ? "" : "s"}`);
+  if (m.movies.length) parts.push(`${m.movies.length} movie${m.movies.length === 1 ? "" : "s"}`);
+  if (m.music.length) parts.push(`${m.music.length} album${m.music.length === 1 ? "" : "s"}`);
+  if (m.console || m.acc.length) parts.push(`${m.acc.length} accessor${m.acc.length === 1 ? "y" : "ies"}`);
+  return parts.join(" · ") || "no media yet";
+}
+function openMedia(id){
+  const d = S.items[id], m = mediaFor(d); if (!m) return;
+  const list = (arr, attr = "data-gf") => `<div class="tree">${arr.map((g, k) => gameNodeHTML(g, k === arr.length - 1, attr)).join("")}</div>`;
+  const sec = (title, arr, add) => arr.length || add ? `<h3>${title} · ${arr.length}</h3>${arr.length ? list(arr) : `<p class="hint" style="margin:4px 0 6px">None yet.</p>`}${add || ""}` : "";
+  const olderBy = (COMPAT[d.platform] || []).map(p => [p, gamesFor(p)]).filter(([, g]) => g.length);
+  openSheet(`<h2>${esc(d.name)}</h2>
+    <p class="lede" style="margin-bottom:6px">Media and accessories for this ${m.console ? "console" : "player"}${d.locationId ? ` · ${esc(locName(d.locationId))}` : ""}.</p>
+    ${m.console ? sec(`${esc(platName(d.platform))} games`, m.games, `<p style="margin:6px 0 10px"><button class="link" data-md="addgame">+ Add a ${esc(platName(d.platform))} game</button></p>`) : ""}
+    ${olderBy.map(([p, g]) => `<h3>Also plays: ${esc(platName(p))} games · ${g.length}</h3>${list(g)}`).join("")}
+    ${sec("Movies", m.movies, m.movies.length ? "" : (MOVIE_CONSOLES[d.platform] || d.category === "Blu-ray & Media Players") && !/digital/i.test(d.name + " " + (d.model || "")) ? `<p class="hint" style="margin:0 0 8px">Add DVDs and Blu-rays under Movies &amp; Music and they show here.</p>` : "")}
+    ${sec("Music", m.music)}
+    ${m.console || m.acc.length ? sec("Controllers & accessories", m.acc, `<p style="margin:6px 0 10px"><button class="link" data-md="addacc">+ Add a controller or accessory</button></p>`) : ""}
+    <div class="minor"><button class="link" data-md="item">Open ${esc(d.name)}</button><button class="link" data-md="close" style="margin-left:auto">Close</button></div>`);
+  fillPhotos($("#sheetCard"));
+  $("#sheetCard").onclick = e => {
+    const g = e.target.closest("[data-gf]"); if (g) return openItem(g.dataset.gf);
+    const b = e.target.closest("[data-md]"); if (!b) return;
+    if (b.dataset.md === "close") return closeSheet();
+    if (b.dataset.md === "item") return openItem(id);
+    if (b.dataset.md === "addgame") return addGame(d.platform);
+    if (b.dataset.md === "addacc") return editItem({ department:"Gaming", category:"Controllers", platform: d.platform || "", gtype:"other", kind:"tool", locationId: d.locationId || "" }, true);
+  };
+}
 function zoneHTML(l){
-  const its = itemsIn(l.id);
+  const all = itemsIn(l.id), its = rfOn() ? all.filter(rfMatch) : all;
   return `<div class="zone k-${locKind(l)}" data-zone="${esc(l.id)}">
     <button class="zlabel" data-openloc="${esc(l.id)}">${esc(l.name)}<span>${its.length}</span></button><span class="zkind">${esc(LOC_KINDS[locKind(l)])}</span>
-    <div class="ztiles">${its.map(tileHTML).join("") || `<span class="zempty">Empty</span>`}</div>
+    <div class="ztiles">${its.map(tileHTML).join("") || `<span class="zempty">${rfOn() && all.length ? "No matches" : "Empty"}</span>`}</div>
     ${S.arrange ? `<div class="zarr"><button data-mv="-1" aria-label="Move earlier">◀</button><button data-mv="1" aria-label="Move later">▶</button><button data-editloc="${esc(l.id)}">Edit</button></div>` : ""}
   </div>`;
 }
@@ -1984,18 +2065,33 @@ function renderMap(){
   if (!rs.includes(S.mapWall)) S.mapWall = rs[0] || "";
   $("#layoutBtn").hidden = !S.arrange;
   renderPlan();
-  $("#roomHead").textContent = S.mapWall ? S.mapWall : "";
+  $("#roomHead").textContent = S.mapWall ? S.mapWall + (rfOn() ? " · filtered" : "") : "";
   $("#mapWalls").innerHTML = rs.map(r => { const n = locs.filter(l => locRoom(l) === r).length; return `<button class="chip" data-wall="${esc(r)}" aria-pressed="${S.mapWall === r}">${esc(r)} · ${n}</button>`; }).join("");
   const on = locs.filter(l => locRoom(l) === S.mapWall).sort(byOrder);
-  $("#wallUp").innerHTML = on.length ? on.map(zoneHTML).join("") : `<div class="wallnote">Nothing in ${esc(S.mapWall || "this room")} yet. Tap <b>Add place</b> to add its rack, TV stand, desk or shelf.</div>`;
+  /* filter: departments in this room, then what matches */
+  const roomItems = on.flatMap(l => itemsIn(l.id));
+  const depts = [...new Set(roomItems.map(i => i.department))].sort();
+  if (S.rf.dept && !depts.includes(S.rf.dept)) depts.push(S.rf.dept);
+  $("#roomDept").innerHTML = `<option value="">Everything</option>` + depts.map(d => `<option ${d === S.rf.dept ? "selected" : ""}>${esc(d)}</option>`).join("");
+  if ($("#roomQ").value !== S.rf.q) $("#roomQ").value = S.rf.q;
+  const shown = rfOn() ? on.filter(l => itemsIn(l.id).some(rfMatch)) : on;
+  $("#wallUp").innerHTML = !on.length ? `<div class="wallnote">Nothing in ${esc(S.mapWall || "this room")} yet. Tap <b>Add place</b> to add its rack, TV stand, desk or shelf.</div>`
+    : shown.length ? shown.map(zoneHTML).join("") : `<div class="wallnote">Nothing in ${esc(S.mapWall)} matches. <button class="link" data-rfclear="1">Clear the filter</button></div>`;
+  /* consoles and players in this room: a button each for their media and accessories */
+  const players = roomItems.map(d => [d, mediaFor(d)]).filter(([d, m]) => m && d.status !== "retired" && (!rfOn() || rfMatch(d) || [...m.games, ...m.older, ...m.movies, ...m.music, ...m.acc].some(rfMatch)));
+  $("#players").innerHTML = players.map(([d, m]) => `<button class="player" data-media="${esc(d.id)}"><span class="pi">${esc(d.category === "Blu-ray & Media Players" ? (/dvd/i.test(d.name) && !/blu/i.test(d.name) ? "DVD" : "BD") : d.category === "Turntables & Hi-Fi" ? "LP" : PLAT[d.platform] ? initials(platName(d.platform)) : initials(d.name))}</span><span><b>${esc(d.name)}</b><small>${esc(mediaSummary(m))} ›</small></span></button>`).join("");
   $("#arrangeBtn").setAttribute("aria-pressed", String(S.arrange)); $("#arrangeBtn").textContent = S.arrange ? "Done arranging" : "Arrange";
   $("#mapHint").textContent = S.arrange ? "Use ◀ ▶ to reorder places in this room. Edit changes the room or type. Configure layout (at the top) draws the floor plan." : "";
-  const loose = itemsIn("");
+  const loose = itemsIn("").filter(i => !rfOn() || rfMatch(i));
   $("#mapLooseBox").hidden = !loose.length;
   $("#mapLoose").innerHTML = loose.map(tileHTML).join("");
   fillPhotos($("#v-map"));
 }
+$("#roomQ").addEventListener("input", e => { S.rf.q = e.target.value; renderMap(); });
+$("#roomDept").addEventListener("change", e => { S.rf.dept = e.target.value; renderMap(); });
 $("#v-map").addEventListener("click", e => {
+  const pm = e.target.closest("[data-media]"); if (pm) return openMedia(pm.dataset.media);
+  if (e.target.closest("[data-rfclear]")) { S.rf = { q: "", dept: "" }; return renderMap(); }
   const t = e.target.closest("[data-item],[data-openloc],[data-wall],[data-mv],[data-editloc]"); if (!t) return;
   if (t.dataset.item) return openItem(t.dataset.item);
   if (t.dataset.openloc) return openLoc(t.dataset.openloc);
@@ -2076,10 +2172,12 @@ function renderPlan(){
   const k = vw / Math.max(280, box.clientWidth || 600);   // feet per screen pixel, so text stays the same size on screen
   const body = on.map(s => {
     const t = s.type || "room", nm = shapeName(s), [cx, cy] = polyCentroid(s.pts);
-    const poly = `<polygon class="pl-shape t-${t}${t !== "outline" && nm && nm === S.mapWall ? " sel" : ""}" points="${ptsAttr(s.pts)}" style="--h:${hueOf(nm)}"/>`;
+    const dimmed = rfOn() && t !== "outline" && !(nm && placesInRoom(nm).some(l => itemsIn(l.id).some(rfMatch)));
+    const poly = `<polygon class="pl-shape t-${t}${t !== "outline" && nm && nm === S.mapWall ? " sel" : ""}" points="${ptsAttr(s.pts)}" style="--h:${hueOf(nm)}${dimmed ? ";opacity:.35" : ""}"/>`;
     if (t === "outline") return `<g>${poly}${nm ? `<text class="pl-sub" x="${b.x0 + 0.3}" y="${b.y0 - 0.3}" font-size="${11 * k}" text-anchor="start">${esc(nm)}</text>` : ""}</g>`;
     const pl = nm ? placesInRoom(nm) : [], things = pl.reduce((t2, l) => t2 + itemsIn(l.id).length, 0);
-    const sub = pl.length ? `${pl.length} place${pl.length === 1 ? "" : "s"} · ${things} thing${things === 1 ? "" : "s"}` : "empty";
+    const hits = rfOn() ? pl.reduce((t2, l) => t2 + itemsIn(l.id).filter(rfMatch).length, 0) : 0;
+    const sub = rfOn() ? (hits ? `${hits} match${hits === 1 ? "" : "es"}` : "no matches") : pl.length ? `${pl.length} place${pl.length === 1 ? "" : "s"} · ${things} thing${things === 1 ? "" : "s"}` : "empty";
     return `<g class="pl-room" ${nm ? `data-room="${esc(nm)}" tabindex="0" role="button" aria-label="${esc(nm)}, ${esc(sub)}"` : ""}>${poly}
       <text class="pl-lbl" x="${cx}" y="${cy}" font-size="${14 * k}">${esc(nm || "Unnamed")}</text>
       <text class="pl-sub" x="${cx}" y="${cy + 16 * k}" font-size="${11 * k}">${esc(sub)}</text></g>`;
@@ -2905,12 +3003,55 @@ async function decodeImage(file){
     const hit = await readCanvas(c); return hit ? hit.code : null;
   } catch(e){ return null; }
 }
+async function decodeAll(file){
+  await Promise.all([getDetector(), getZX().catch(() => null)]);
+  let bmp; try { bmp = await createImageBitmap(file); } catch(e){ return []; }
+  const found = new Set();
+  const area = (sx, sy, sw, sh, max) => {
+    const c = document.createElement("canvas"), k = Math.min(2, max / Math.max(sw, sh));
+    c.width = Math.max(1, Math.round(sw * k)); c.height = Math.max(1, Math.round(sh * k));
+    const g = c.getContext("2d", { willReadFrequently: true }); g.imageSmoothingQuality = "high"; g.drawImage(bmp, sx, sy, sw, sh, 0, 0, c.width, c.height);
+    return c;
+  };
+  const read = async c => {
+    if (detector) { try { (await detector.detect(c)).forEach(r => r.rawValue && found.add(r.rawValue)); } catch(e){} }
+    if (!detector || !found.size) { const z = zxDecode(c); if (z) found.add(z); }
+  };
+  const W = bmp.width, H = bmp.height;
+  await read(area(0, 0, W, H, 2000));
+  /* small or far-away codes: look again at overlapping thirds of the photo, enlarged */
+  if (!found.size || detector) {
+    const tw = W / 2, th = H / 2;
+    for (const [x, y] of [[0, 0], [W / 4, 0], [W / 2, 0], [0, H / 4], [W / 4, H / 4], [W / 2, H / 4], [0, H / 2], [W / 4, H / 2], [W / 2, H / 2]]) await read(area(x, y, tw, th, 1600));
+  }
+  return [...found];
+}
+/* What a code from a photo is: one of your tags, something you own, a product barcode, or other QR content (a web link, Wi-Fi…). */
+function describeCode(code){
+  const tag = String(code).match(/TS-(IT|LOC)-\d+/i);
+  if (tag) { const h = findByCode(tag[0].toUpperCase()); return h ? { code: tag[0].toUpperCase(), what: S.locs[h.id] ? "Place" : "Your item", name: h.name, open: true } : { code: tag[0].toUpperCase(), what: "Tag not in your list", name: tag[0].toUpperCase() }; }
+  if (/^\d{6,14}$/.test(code)) { const h = findByBarcode(code); return h ? { code, what: "Your item", name: h.name, open: true } : { code, what: "Product barcode", name: "Look it up and add it", open: true }; }
+  if (/^https?:\/\//i.test(code)) return { code, what: "Web link", name: code.replace(/^https?:\/\//i, "").slice(0, 60), url: code };
+  if (/^WIFI:/i.test(code)) { const ssid = (code.match(/S:((?:\\;|[^;])*)/) || [])[1] || ""; return { code, what: "Wi-Fi network", name: ssid.replace(/\\;/g, ";") || "Wi-Fi details" }; }
+  return { code, what: "QR text", name: code.slice(0, 80) };
+}
+function showCodes(codes){
+  $("#scanStatus").textContent = `Found ${codes.length} codes in that photo. Tap one to open it.`;
+  $("#scanResult").innerHTML = `<div class="qrlist">${codes.map(c => { const d = describeCode(c);
+    return d.url ? `<a class="qrhit" href="${esc(d.url)}" target="_blank" rel="noopener"><span>${esc(d.name)}<small>${esc(d.what)}</small></span><span class="hint">Open ›</span></a>`
+      : `<button class="qrhit" ${d.open ? `data-code="${esc(d.code)}"` : `data-copy="${esc(c)}"`}><span>${esc(d.name)}<small>${esc(d.what)}${d.what === "Wi-Fi network" ? "" : " · " + esc(d.code.length > 40 ? d.code.slice(0, 40) + "…" : d.code)}</small></span><span class="hint">${d.open ? "Open ›" : "Copy"}</span></button>`; }).join("")}</div>`;
+}
+$("#scanResult").addEventListener("click", async e => {
+  const b = e.target.closest("[data-code]"); if (b) return handleCode(b.dataset.code, null);
+  const c = e.target.closest("[data-copy]"); if (c) { try { await navigator.clipboard.writeText(c.dataset.copy); toast("Copied"); } catch(err){ toast(c.dataset.copy); } }
+});
 $("#scanFile").addEventListener("change", async e => {
   const file = e.target.files[0]; e.target.value = ""; if (!file) return;
-  stopCam(); $("#scanResult").innerHTML = ""; $("#scanStatus").textContent = "Looking for a barcode…";
-  const code = await decodeImage(file);
-  if (code) return handleCode(code, file);
-  $("#scanStatus").textContent = "No barcode found in that photo. Try a closer, sharper shot, or use Identify from photo.";
+  stopCam(); $("#scanResult").innerHTML = ""; $("#scanStatus").textContent = "Looking for QR codes and barcodes…";
+  const codes = await decodeAll(file);
+  if (codes.length === 1) return handleCode(codes[0], file);
+  if (codes.length > 1) return showCodes(codes);
+  $("#scanStatus").textContent = "No QR code or barcode found in that photo. Try a closer, sharper shot with the code flat and well lit, or use Identify from photo.";
 });
 $("#idFile").addEventListener("change", async e => {
   const file = e.target.files[0]; e.target.value = ""; if (!file) return;
@@ -2963,10 +3104,13 @@ async function handleCode(code, frame){
     if (!hit) return;
     return S.locs[hit.id] ? openLoc(hit.id) : openItem(hit.id);
   }
+  const tagIn = code.match(/TS-(IT|LOC)-\d+/i);
+  if (tagIn && tagIn[0] !== code) return handleCode(tagIn[0].toUpperCase(), frame);
   const hit = findByBarcode(code);
   if (hit) { $("#scanStatus").textContent = ""; return openItem(hit.id); }
+  if (!/^[0-9]{6,14}$/.test(code.replace(/[\s-]/g, "")) && /[^0-9\s-]/.test(code)) { showTab("scan"); $("#scanStatus").textContent = "That code isn't a product barcode or one of your tags. It says:"; $("#scanResult").innerHTML = `<div class="qrlist">${[code].map(c => { const d = describeCode(c); return d.url ? `<a class="qrhit" href="${esc(d.url)}" target="_blank" rel="noopener"><span>${esc(d.name)}<small>${esc(d.what)}</small></span><span class="hint">Open ›</span></a>` : `<button class="qrhit" data-copy="${esc(c)}"><span>${esc(d.name)}<small>${esc(d.what)}</small></span><span class="hint">Copy</span></button>`; }).join("")}</div>`; return; }
   $("#scanStatus").textContent = "";
-  editItem({}, true, { code, frame });
+  editItem({}, true, { code: code.replace(/[\s-]/g, ""), frame });
 }
 
 /* ---------- settings ---------- */
