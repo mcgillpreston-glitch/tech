@@ -1103,9 +1103,12 @@ const normMac = v => { const h = String(v || "").replace(/^(mac|mac address)\s*[
 const cleanSerial = v => String(v || "").replace(/^\s*(s\/?n|serial(\s*no\.?|\s*number)?)\s*[:#]?\s*/i, "").trim();
 const daysUntil = iso => -daysSince(iso);
 const live = it => isDevice(it) && it.status !== "retired";
+const onWifi = d => d.link === "wifi";
+/* Devices that give out Wi-Fi: routers, gateways, mesh units and access points (or anything named that way). */
+const isWifiSource = d => isDevice(d) && (/Routers & Gateways|Mesh Wi-Fi & Access Points/.test(d.category || "") || /wi-?fi|wireless|access point|\bmesh\b/i.test([d.name, d.model].join(" ")) && /^Networking/.test(d.department || ""));
 const childrenOf = id => Object.values(S.items).filter(i => live(i) && i.uplink === id).sort((a, b) => (parseInt(a.port) || 999) - (parseInt(b.port) || 999) || a.name.localeCompare(b.name));
 const camerasOn = id => Object.values(S.items).filter(i => live(i) && i.nvr === id).sort((a, b) => (parseInt(a.channel) || 999) - (parseInt(b.channel) || 999) || a.name.localeCompare(b.name));
-const poeUse = id => +childrenOf(id).reduce((t, c) => t + num(c.poeW), 0).toFixed(1);
+const poeUse = id => +childrenOf(id).filter(c => !onWifi(c)).reduce((t, c) => t + num(c.poeW), 0).toFixed(1);
 const isNvr = it => /NVR/.test(it.category || "") || num(it.channels) > 0;
 const itemLink = it => `<button class="link" data-a="goto" data-f="${esc(it.id)}">${esc(it.name)}</button>`;
 let netMemo = { rev: -1, v: null };
@@ -1118,13 +1121,13 @@ function netIssues(){
   group(d => ipNum(d.ip) != null ? String(d.ip).trim() : "").forEach(([ip, ds]) => flag(ds.map(d => d.id), "bad", `${ip} is set on ${ds.map(d => d.name).join(" and ")}. Only one device can use an address.`, "IP clash"));
   group(d => normMac(d.mac).length === 17 ? normMac(d.mac) : "").forEach(([mac, ds]) => flag(ds.map(d => d.id), "warn", `${ds.map(d => d.name).join(" and ")} have the same MAC address (${mac}). One of them is probably a typo.`, "Same MAC"));
   devs.filter(d => d.ip && ipNum(d.ip) == null).forEach(d => flag([d.id], "warn", `${d.name}'s IP address "${d.ip}" isn't a valid address.`, "Bad IP"));
-  group(d => d.uplink && S.items[d.uplink] && d.port ? d.uplink + "|" + String(d.port).trim() : "").forEach(([k, ds]) => flag(ds.map(d => d.id), "warn", `${ds.map(d => d.name).join(" and ")} are both on port ${ds[0].port} of ${S.items[ds[0].uplink].name}.`, "Same port"));
+  group(d => d.uplink && S.items[d.uplink] && d.port && !onWifi(d) ? d.uplink + "|" + String(d.port).trim() : "").forEach(([k, ds]) => flag(ds.map(d => d.id), "warn", `${ds.map(d => d.name).join(" and ")} are both on port ${ds[0].port} of ${S.items[ds[0].uplink].name}.`, "Same port"));
   devs.filter(d => num(d.poeBudget) > 0).forEach(sw => {
     const use = poeUse(sw.id), b = num(sw.poeBudget);
     if (use > b) flag([sw.id], "bad", `${sw.name} is over its PoE budget: ${use} W of ${b} W. Devices may reboot or not power on.`, "PoE over");
     else if (use > b * 0.9) flag([sw.id], "warn", `${sw.name} is close to its PoE budget: ${use} W of ${b} W.`, "PoE high");
   });
-  devs.filter(d => num(d.poeW) > 0 && d.uplink && S.items[d.uplink] && !num(S.items[d.uplink].poeBudget) && !/PoE|NVR/i.test(S.items[d.uplink].category || ""))
+  devs.filter(d => num(d.poeW) > 0 && !onWifi(d) && d.uplink && S.items[d.uplink] && !num(S.items[d.uplink].poeBudget) && !/PoE|NVR/i.test(S.items[d.uplink].category || ""))
     .forEach(d => flag([d.id], "warn", `${d.name} needs ${num(d.poeW)} W of PoE, but ${S.items[d.uplink].name} isn't set up as a PoE switch. Add its PoE budget, or check it's powered another way.`, "No PoE"));
   devs.filter(isNvr).forEach(n => {
     const cams = camerasOn(n.id), cap = num(n.channels);
@@ -1132,6 +1135,15 @@ function netIssues(){
     const byCh = {}; cams.forEach(c => { if (c.channel) (byCh[String(c.channel).trim()] ||= []).push(c); });
     Object.entries(byCh).filter(([, v]) => v.length > 1).forEach(([ch, v]) => flag(v.map(c => c.id), "bad", `${v.map(c => c.name).join(" and ")} are both set to channel ${ch} on ${n.name}.`, "Channel clash"));
     if (cap) cams.filter(c => parseInt(c.channel) > cap).forEach(c => flag([c.id], "warn", `${c.name} is on channel ${c.channel}, but ${n.name} only has ${cap}.`, "Bad channel"));
+  });
+  const looped = new Set();
+  devs.forEach(d => {
+    const path = []; let cur = d;
+    while (cur && cur.uplink && S.items[cur.uplink] && !path.includes(cur.id)) { path.push(cur.id); cur = S.items[cur.uplink]; }
+    if (cur && path.includes(cur.id)) {
+      const loop = path.slice(path.indexOf(cur.id)), key = [...loop].sort().join("|");
+      if (!looped.has(key)) { looped.add(key); flag(loop, "warn", `${loop.map(id => S.items[id].name).join(" and ")} are each set as plugged into the other. Only the device that hangs off the other should say what it's plugged into (usually the switch is plugged into the router), so clear it on the other one.`, "Loop"); }
+    }
   });
   netMemo = { rev: NETREV, v: { list, byItem } };
   return netMemo.v;
@@ -1147,18 +1159,21 @@ function netFacts(it, add){
   add("MAC", it.mac ? `<span class="mono">${esc(it.mac)}</span>` : "");
   add("Firmware", it.firmware ? `<span class="mono">${esc(it.firmware)}</span>` : "");
   const up = S.items[it.uplink];
-  if (up) add("Plugged into", `${itemLink(up)}${it.port ? ` · port ${esc(it.port)}` : ""}`);
+  if (up && onWifi(it)) add("Wi-Fi from", `${itemLink(up)}${it.ssid ? ` · <span class="mono">${esc(it.ssid)}</span>` : ""}`);
+  else if (up) add("Plugged into", `${itemLink(up)}${it.port ? ` · port ${esc(it.port)}` : ""}`);
   if (num(it.poeW)) add("PoE", `draws ${num(it.poeW)} W`);
   const kids = childrenOf(it.id);
   if (num(it.poeBudget)) { const use = poeUse(it.id), b = num(it.poeBudget), pct = Math.min(100, Math.round(use / b * 100)); add("PoE budget", `${use} of ${b} W used<div class="meter ${use > b ? "bad" : use > b * .9 ? "warn" : ""}"><i style="width:${pct}%"></i></div>`); }
-  if (kids.length) add("Plugged in here", kids.map(k => `${itemLink(k)}${k.port ? ` <span class="hint">(port ${esc(k.port)})</span>` : ""}`).join(", "));
+  const wired = kids.filter(k => !onWifi(k)), wifi = kids.filter(onWifi);
+  if (wired.length) add("Plugged in here", wired.map(k => `${itemLink(k)}${k.port ? ` <span class="hint">(port ${esc(k.port)})</span>` : ""}`).join(", "));
+  if (wifi.length) add("On its Wi-Fi", `${wifi.length}: ` + wifi.map(k => itemLink(k)).join(", "));
   const nvr = S.items[it.nvr];
   if (nvr) add("Recorded by", `${itemLink(nvr)}${it.channel ? ` · channel ${esc(it.channel)}` : ""}`);
   if (isNvr(it)) { const cams = camerasOn(it.id); add("Cameras", `${cams.length}${num(it.channels) ? ` of ${num(it.channels)} channels` : ""}${cams.length ? ": " + cams.map(c => `${itemLink(c)}${c.channel ? ` <span class="hint">(ch ${esc(c.channel)})</span>` : ""}`).join(", ") : ""}`); }
 }
-function deviceOptions(sel, selfId, nvrOnly){
+function deviceOptions(sel, selfId, nvrOnly, wifiOnly){
   const order = d => /^Networking/.test(d.department) ? 0 : /^Security/.test(d.department) ? 1 : 2;
-  const ds = Object.values(S.items).filter(d => isDevice(d) && d.id !== selfId && (!nvrOnly || isNvr(d) || d.id === sel))
+  const ds = Object.values(S.items).filter(d => isDevice(d) && d.id !== selfId && (!nvrOnly || isNvr(d) || d.id === sel) && (!wifiOnly || isWifiSource(d)))
     .sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name));
   return `<option value="">—</option>` + ds.map(d => `<option value="${esc(d.id)}" ${d.id === sel ? "selected" : ""}>${esc(d.name)}${d.ip ? " · " + esc(d.ip) : ""}</option>`).join("");
 }
@@ -1232,7 +1247,7 @@ function renderNet(){
     const walk = (d, prefix, last, depth) => {
       if (seen.has(d.id)) return; seen.add(d.id);
       const branch = depth ? prefix + (last ? "└─ " : "├─ ") : "";
-      rows.push(`<button class="node" data-open="${esc(d.id)}"><span class="nm">${branch ? `<span class="branch">${branch}</span>` : ""}<b>${esc(d.name)}</b>${d.port && depth ? `<span class="hint">port ${esc(d.port)}</span>` : ""}${num(d.poeW) ? `<span class="pill net">${num(d.poeW)} W</span>` : ""}</span><span class="addr">${esc(d.ip || "")}</span></button>`);
+      rows.push(`<button class="node" data-open="${esc(d.id)}"><span class="nm">${branch ? `<span class="branch">${branch}</span>` : ""}<b>${esc(d.name)}</b>${depth && onWifi(d) ? `<span class="pill net">Wi-Fi</span>` : d.port && depth ? `<span class="hint">port ${esc(d.port)}</span>` : ""}${num(d.poeW) ? `<span class="pill net">${num(d.poeW)} W</span>` : ""}</span><span class="addr">${esc(d.ip || "")}</span></button>`);
       const kids = childrenOf(d.id).filter(k => inNet.has(k.id));
       kids.forEach((k, i) => walk(k, depth ? prefix + (last ? "   " : "│  ") : "", i === kids.length - 1, depth + 1));
     };
@@ -1530,9 +1545,11 @@ function editItem(it, isNew, auto){
             <label>MAC address<span class="inbtn"><input type="text" id="f-mac" class="mono" value="${esc(it.mac || "")}" placeholder="AA:BB:CC:DD:EE:FF" autocapitalize="characters"><button type="button" class="btn ghost" data-scanto="#f-mac" aria-label="Scan the MAC address barcode">Scan</button></span></label>
             <label>Hostname<input type="text" id="f-host" class="mono" value="${esc(it.host || "")}" autocapitalize="off"></label>
             <label>Firmware<input type="text" id="f-fw" class="mono" value="${esc(it.firmware || "")}"></label>
-            <label>Plugged into<select id="f-uplink">${deviceOptions(it.uplink, it.id)}</select></label>
-            <label>Port<input type="text" id="f-port" value="${esc(it.port || "")}" placeholder="e.g. 3"></label>
-            <label>PoE it draws (W)<input type="number" id="f-poew" min="0" step="0.1" inputmode="decimal" value="${esc(it.poeW ?? "")}" placeholder="powered by PoE"></label>
+            <label>Connection<select id="f-link"><option value="wired" ${onWifi(it) ? "" : "selected"}>Wired (Ethernet)</option><option value="wifi" ${onWifi(it) ? "selected" : ""}>Wi-Fi</option></select></label>
+            <label><span id="f-uplbl">${onWifi(it) ? "Wi-Fi from" : "Plugged into"}</span><select id="f-uplink">${deviceOptions(it.uplink, it.id, false, onWifi(it))}</select></label>
+            <label data-wired>Port<input type="text" id="f-port" value="${esc(it.port || "")}" placeholder="e.g. 3"></label>
+            <label data-wifi>Wi-Fi network (optional)<input type="text" id="f-ssid" value="${esc(it.ssid || "")}" placeholder="network name" autocapitalize="off"></label>
+            <label data-wired>PoE it draws (W)<input type="number" id="f-poew" min="0" step="0.1" inputmode="decimal" value="${esc(it.poeW ?? "")}" placeholder="powered by PoE"></label>
             <label>PoE budget (W)<input type="number" id="f-poeb" min="0" step="1" inputmode="decimal" value="${esc(it.poeBudget ?? "")}" placeholder="switches, NVRs"></label>
             <label>Recorded by<select id="f-nvr">${deviceOptions(it.nvr, it.id, true)}</select></label>
             <label>NVR channel<input type="text" id="f-chan" inputmode="numeric" value="${esc(it.channel || "")}" placeholder="cameras"></label>
@@ -1581,6 +1598,19 @@ function editItem(it, isNew, auto){
   const fillCats = (dept, sel) => { $("#f-cat").innerHTML = catsOf(dept).map(c => `<option ${c.name === sel ? "selected" : ""}>${esc(c.name)}</option>`).join(""); showFor(); };
   $("#f-gtype").value = it.gtype || (it.department === "Gaming" && it.category && !CONSOLE_CATS.includes(it.category) ? "other" : "console");
   setKind(kind); fillCats(it.department, it.category);
+  const showLink = () => {
+    const wifi = $("#f-link").value === "wifi";
+    $("#sheetCard").querySelectorAll("[data-wired]").forEach(el => el.hidden = wifi);
+    $("#sheetCard").querySelectorAll("[data-wifi]").forEach(el => el.hidden = !wifi);
+    $("#f-uplbl").textContent = wifi ? "Wi-Fi from" : "Plugged into";
+  };
+  $("#f-link").onchange = () => {
+    const wifi = $("#f-link").value === "wifi", cur = $("#f-uplink").value;
+    $("#f-uplink").innerHTML = deviceOptions(wifi && cur && !isWifiSource(S.items[cur] || {}) ? "" : cur, it.id, false, wifi);
+    if (wifi && $("#f-uplink").options.length === 1) toast("No Wi-Fi routers or access points yet. Add your router under Networking first.");
+    showLink();
+  };
+  showLink();
   $("#f-gtype").onchange = () => { showFor(); presetBattery(); showFor(); };
   $("#f-plat").onchange = () => {
     const p = PLAT[$("#f-plat").value];
@@ -1772,7 +1802,8 @@ function editItem(it, isNew, auto){
       if (isGame(n)) Object.assign(n, { format: $("#f-format").value });
       else Object.assign(n, { serial: cleanSerial($("#f-serial").value), warrantyUntil: $("#f-warranty").value, manualUrl: $("#f-manual").value.trim(),
         ip: $("#f-ip").value.trim(), mac: normMac($("#f-mac").value), host: $("#f-host").value.trim(), firmware: $("#f-fw").value.trim(),
-        uplink: $("#f-uplink").value, port: $("#f-port").value.trim(), poeW: nz($("#f-poew").value), poeBudget: nz($("#f-poeb").value),
+        link: $("#f-link").value === "wifi" ? "wifi" : "", ssid: $("#f-link").value === "wifi" ? $("#f-ssid").value.trim() : "",
+        uplink: $("#f-uplink").value, port: $("#f-link").value === "wifi" ? "" : $("#f-port").value.trim(), poeW: $("#f-link").value === "wifi" ? null : nz($("#f-poew").value), poeBudget: nz($("#f-poeb").value),
         nvr: $("#f-nvr").value, channel: $("#f-chan").value.trim(), channels: nz($("#f-chans").value) });
       if (n.ip && ipNum(n.ip) == null) { $("#f-netbox").open = true; $("#f-ip").focus(); toast("That IP address doesn't look right (like 192.168.1.20)"); return null; }
       n.status = n.status || "available";
