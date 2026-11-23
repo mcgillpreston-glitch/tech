@@ -249,6 +249,13 @@ details.netbox .form{padding-bottom:12px}
 .pl-lbl{fill:var(--ink);font-family:var(--display);font-weight:700;text-anchor:middle;pointer-events:none}
 .pl-sub{fill:var(--muted);font-family:var(--body);text-anchor:middle;pointer-events:none}
 #roomHead{margin:4px 0 8px;scroll-margin-top:80px}
+/* Camera or gallery chooser */
+.srcpick{position:fixed;inset:0;z-index:350;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;padding:16px 16px max(16px,env(safe-area-inset-bottom))}
+.srccard{width:100%;max-width:420px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.srccard b{font-family:var(--display);font-size:18px;margin-bottom:2px}
+.srccard .btn{justify-content:center;gap:8px;display:flex;align-items:center}
+.srccard .link{align-self:center;padding:6px}
+.srccard svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 /* Network chart */
 .nethead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
 .nethead h3{margin:0}
@@ -474,9 +481,9 @@ nav.tabs button[aria-current="page"]{color:var(--accent);font-weight:600}
       <button class="btn ghost" id="manualGo">Look up</button>
     </div>
     <div class="row" style="margin-bottom:14px">
-      <label class="btn ghost sm" for="idFile">Identify from photo</label>
+      <button type="button" class="btn ghost sm" data-pick="idFile">Identify from photo</button>
       <input type="file" id="idFile" accept="image/*" hidden>
-      <label class="btn ghost sm" for="scanFile">Scan QR or barcode from a photo</label>
+      <button type="button" class="btn ghost sm" data-pick="scanFile">Scan QR or barcode from a photo</button>
       <input type="file" id="scanFile" accept="image/*" hidden>
     </div>
     <div class="status" id="scanStatus"></div>
@@ -954,7 +961,31 @@ function cropImage(blob){
     requestAnimationFrame(() => layout(false));
   });
 }
-function takePhoto(id, after){ photoTarget = { id, after }; $("#rowPhoto").click(); }
+function takePhoto(id, after){ photoTarget = { id, after }; pickSource($("#rowPhoto")); }
+/* Camera or gallery: phones only offer both when asked separately, so ask first. */
+function pickSource(input){
+  if (!input) return;
+  const old = document.querySelector(".srcpick"); if (old) old.remove();
+  const el = document.createElement("div"); el.className = "srcpick"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Choose a photo");
+  el.innerHTML = `<div class="srccard"><b>Add a photo</b>
+    <button class="btn" data-src="cam">${CAM_SVG}Take a photo</button>
+    <button class="btn ghost" data-src="pick">Choose from gallery or files</button>
+    <button class="link" data-src="x">Cancel</button></div>`;
+  document.body.appendChild(el);
+  const done = () => { el.remove(); window.removeEventListener("keydown", onKey, true); };
+  const onKey = e => { if (e.key === "Escape") { e.preventDefault(); e.stopImmediatePropagation(); done(); } };
+  window.addEventListener("keydown", onKey, true);
+  el.addEventListener("click", e => {
+    const b = e.target.closest("[data-src]");
+    if (!b) { if (e.target === el) done(); return; }
+    done();
+    if (b.dataset.src === "cam") input.setAttribute("capture", "environment");
+    else if (b.dataset.src === "pick") input.removeAttribute("capture");
+    else return;
+    input.click();
+  });
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-pick]"); if (b) pickSource(document.getElementById(b.dataset.pick)); });
 $("#rowPhoto").addEventListener("change", async e => {
   const f0 = e.target.files[0]; e.target.value = "";
   const t = photoTarget; photoTarget = null;
@@ -1597,7 +1628,7 @@ function editItem(it, isNew, auto){
       <div class="full seg" role="group" aria-label="Kind"><button type="button" data-kind="tool" aria-pressed="${it.kind === "tool"}">Device, game or disc</button><button type="button" data-kind="supply" aria-pressed="${it.kind === "supply"}">Supply (cables, batteries)</button></div>
       <div class="full fillbar">
         <button type="button" class="btn" id="f-scan">${BAR_SVG}Scan barcode</button>
-        <label class="btn ghost" for="f-idfile">${CAM_SVG}Identify from photo</label>
+        <button type="button" class="btn ghost" data-pick="f-idfile">${CAM_SVG}Identify from photo</button>
         <input type="file" id="f-idfile" accept="image/*" hidden>
       </div>
       <div class="full viewer" id="f-viewer" hidden>
