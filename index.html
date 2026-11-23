@@ -506,7 +506,8 @@ nav.tabs button[aria-current="page"]{color:var(--accent);font-weight:600}
     <div class="chips" id="planFloors"></div>
     <div id="planBox"></div>
     <div class="chips" id="mapWalls"></div>
-    <h3 id="roomHead"></h3>
+    <div id="roomFix"></div>
+    <div class="row between" style="align-items:baseline"><h3 id="roomHead"></h3><button class="link" id="putHere">+ Put things in this room</button></div>
     <div class="rfilter"><input type="search" id="roomQ" placeholder="Filter: name, console, HDMI, serial…" aria-label="Filter things in this room"><select id="roomDept" aria-label="Filter by department" style="width:auto;max-width:44%"></select></div>
     <div class="players" id="players"></div>
     <div class="roomgrid" id="wallUp"></div>
@@ -1577,25 +1578,60 @@ function awayItem(it){
   $("#w-c").onclick = () => openItem(it.id);
   $("#w-s").onclick = () => { putItem({ ...it, status:"away", loan:null, away:{ where: $("#w-where").value.trim() || "Away", since: today() } }); openItem(it.id); };
 }
+/* ---------- choosing where something lives: a room, then a spot in it ----------
+   Every room (from places or the floor plan) offers "Anywhere in <room>", which uses a general spot for that
+   room (made the first time it's needed). Places with no room are listed last. */
+const roomKey = r => String(r || "").toLowerCase().replace(/[^a-z0-9]/g, "");   // "Game room" and "Gameroom" are the same room
+const isGeneralSpot = (l, room) => roomKey(l.room) === roomKey(room) && (l.kind === "general" || roomKey(l.name) === roomKey(room));
+function roomSpot(room, create = true){
+  const r = String(room || "").trim(); if (!r) return "";
+  const hit = Object.values(S.locs).find(l => isGeneralSpot(l, r));
+  if (hit || !create) return hit ? hit.id : "";
+  const l = { id:newId("loc"), name:r, room:r, kind:"general", code:nextCode("loc"), order:Object.keys(S.locs).length + 1 };
+  S.locs[l.id] = l; return l.id;
+}
 function locOptions(sel, allowNew = true){
-  const locs = Object.values(S.locs).sort((a, b) => (a.order || 0) - (b.order || 0) || a.name.localeCompare(b.name));
-  return `<option value="">Not assigned</option>` + locs.map(l => `<option value="${esc(l.id)}" ${l.id === sel ? "selected" : ""}>${esc(l.name)}${l.room ? " · " + esc(l.room) : ""}</option>`).join("") + (allowNew ? `<option value="__new">+ New place…</option>` : "");
+  const byOrder2 = (a, b) => (a.order || 0) - (b.order || 0) || a.name.localeCompare(b.name);
+  const locs = Object.values(S.locs);
+  const rs = rooms().filter(r => r !== "Other");
+  const groups = rs.map(r => {
+    const spot = locs.find(l => isGeneralSpot(l, r));
+    const inRoom = locs.filter(l => roomKey(l.room) === roomKey(r) && l !== spot).sort(byOrder2);
+    return `<optgroup label="${esc(r)}"><option value="${spot ? esc(spot.id) : "room:" + esc(r)}" ${spot && spot.id === sel ? "selected" : ""}>${esc(r)} (anywhere in the room)</option>${inRoom.map(l => `<option value="${esc(l.id)}" ${l.id === sel ? "selected" : ""}>${esc(l.name)}</option>`).join("")}</optgroup>`;
+  }).join("");
+  const loose = locs.filter(l => !String(l.room || "").trim()).sort(byOrder2);
+  return `<option value="">Not assigned</option>` + groups
+    + (loose.length ? `<optgroup label="Not in a room yet">${loose.map(l => `<option value="${esc(l.id)}" ${l.id === sel ? "selected" : ""}>${esc(l.name)}</option>`).join("")}</optgroup>` : "")
+    + (allowNew ? `<option value="__new">+ New place…</option>` : "");
 }
 function wireLocSelect(selId, newId_){
   const sel = $(selId), box = $(newId_);
+  if (box && !box.querySelector("select")) {
+    const pick = document.createElement("label"); pick.className = "full";
+    const nowRoom = S.tab === "map" ? S.mapWall : "";
+    pick.innerHTML = `In room<select class="newroom">${rooms().filter(r => r !== "Other").map(r => `<option ${roomKey(r) === roomKey(nowRoom) ? "selected" : ""}>${esc(r)}</option>`).join("")}<option value="">No room</option><option value="__newroom">New room…</option></select>`;
+    box.appendChild(pick);
+    const rs = pick.querySelector("select");
+    rs.onchange = () => { if (rs.value === "__newroom") { const r = (prompt("Name of the room") || "").trim(); if (r) { rs.insertAdjacentHTML("afterbegin", `<option selected>${esc(r)}</option>`); } else rs.value = ""; } };
+  }
   sel.onchange = () => { box.hidden = sel.value !== "__new"; if (!box.hidden) box.querySelector("input").focus(); };
 }
 function resolveLoc(selId, nameId){
   const v = $(selId).value;
+  if (v.startsWith("room:")) return roomSpot(v.slice(5));
   if (v !== "__new") return v;
   const name = $(nameId).value.trim(); if (!name) return "";
-  const l = { id:newId("loc"), name, room:"", code:nextCode("loc"), order:Object.keys(S.locs).length + 1 };
+  const rsel = $(nameId).closest("[id]") && $(nameId).closest("label").parentElement.querySelector(".newroom");
+  const room = rsel && rsel.value !== "__newroom" ? rsel.value : "";
+  const same = Object.values(S.locs).find(l => roomKey(l.name) === roomKey(name) && roomKey(l.room) === roomKey(room));
+  if (same) return same.id;                                   // don't make a second place with the same name in the same room
+  const l = { id:newId("loc"), name, room, code:nextCode("loc"), order:Object.keys(S.locs).length + 1 };
   S.locs[l.id] = l; return l.id;
 }
 function moveItem(it){
   openSheet(`<h2>Move ${esc(it.name)}</h2>
     <div class="form"><label class="full">New place<select id="m-loc">${locOptions(it.locationId)}</select></label>
-    <label class="full" id="m-newbox" hidden>Name of the new place<input type="text" id="m-new" placeholder="e.g. Office desk, cable bin"></label></div>
+    <div class="full form" id="m-newbox" hidden style="grid-column:1/-1"><label class="full">Name of the new place<input type="text" id="m-new" placeholder="e.g. TV stand, office desk, cable bin"></label></div></div>
     <div class="row end" style="margin-top:14px"><button class="btn ghost" id="m-c">Cancel</button><button class="btn" id="m-s">Move</button></div>`);
   wireLocSelect("#m-loc", "#m-newbox");
   $("#m-c").onclick = () => openItem(it.id);
@@ -1651,7 +1687,7 @@ function editItem(it, isNew, auto){
       <label><span id="f-brandlbl">Brand</span><input type="text" id="f-brand" value="${esc(it.brand || "")}"></label>
       <label><span id="f-modellbl">Model</span><input type="text" id="f-model" value="${esc(it.model || "")}"></label>
       <label class="full">Place<select id="f-loc">${locOptions(it.locationId)}</select></label>
-      <label class="full" id="f-newbox" hidden>Name of the new place<input type="text" id="f-new" placeholder="e.g. Office desk, cable bin"></label>
+      <div class="full form" id="f-newbox" hidden style="grid-column:1/-1"><label class="full">Name of the new place<input type="text" id="f-new" placeholder="e.g. TV stand, office desk, cable bin"></label></div>
 
       <div class="full form" data-for="tool" style="grid-column:1/-1">
         <label data-only="game">Format<select id="f-format"><option value="">—</option>${Object.entries(GAME_FORMATS).map(([k, v]) => `<option value="${k}" ${k === it.format ? "selected" : ""}>${v}</option>`).join("")}</select></label>
@@ -2060,7 +2096,7 @@ $("#clearEx").onclick = () => {
 };
 
 /* ---------- places ---------- */
-const LOC_KINDS = { rack:"Network rack", media:"TV stand / media console", shelf:"Shelf", desk:"Desk", closet:"Closet or cabinet", bins:"Bins & drawers", mount:"Wall or ceiling mount", outdoor:"Outdoors" };
+const LOC_KINDS = { general:"Whole room", rack:"Network rack", media:"TV stand / media console", shelf:"Shelf", desk:"Desk", closet:"Closet or cabinet", bins:"Bins & drawers", mount:"Wall or ceiling mount", outdoor:"Outdoors" };
 function locKind(l){
   if (l.kind && LOC_KINDS[l.kind]) return l.kind;
   const n = (l.name + " " + (l.room || "")).toLowerCase();
@@ -2072,10 +2108,54 @@ function locKind(l){
 const locRoom = l => String(l.room || l.area || "").trim() || "Other";
 const rooms = () => [...new Set([...Object.values(S.locs).map(locRoom), ...Object.values(S.shapes || {}).filter(x => x.type !== "outline" && String(x.name || "").trim()).map(x => String(x.name).trim())])].sort((a, b) => a === "Other" ? 1 : b === "Other" ? -1 : a.localeCompare(b));
 function itemsIn(locId){ return Object.values(S.items).filter(i => (i.locationId || "") === locId).sort((a, b) => a.name.localeCompare(b.name)); }
+/* Places that should be one: a place named like a room but with no room set ("Kitchen"), and the same name
+   twice where one copy has no room ("Server Rack" and "Server Rack · Garage"), or twice in the same room. */
+function placeFixes(){
+  const locs = Object.values(S.locs), rs = rooms().filter(r => r !== "Other"), out = [];
+  const keyOf = l => roomKey(l.name) + "|" + roomKey(l.room);
+  for (const l of locs) {
+    if (String(l.room || "").trim()) continue;
+    const twin = locs.find(o => o !== l && roomKey(o.name) === roomKey(l.name) && String(o.room || "").trim());
+    if (twin) { out.push({ type:"merge", from:l, to:twin }); continue; }
+    const r = rs.find(x => roomKey(x) === roomKey(l.name));
+    if (r) out.push({ type:"room", loc:l, room:r });
+  }
+  const seen = {};
+  for (const l of locs.filter(x => String(x.room || "").trim())) {
+    const k = keyOf(l);
+    if (seen[k]) out.push({ type:"merge", from:(itemsIn(l.id).length > itemsIn(seen[k].id).length ? seen[k] : l), to:(itemsIn(l.id).length > itemsIn(seen[k].id).length ? l : seen[k]) });
+    else seen[k] = l;
+  }
+  return out.filter((f, i, a) => f.type !== "merge" || a.findIndex(g => g.type === "merge" && g.from === f.from) === i);
+}
+function fixesHTML(){
+  const fx = placeFixes(); if (!fx.length) return "";
+  return `<div class="issue warn" style="display:block;margin-bottom:12px"><b>${fx.length} place${fx.length === 1 ? "" : "s"} to tidy up</b>
+    <ul style="margin:6px 0 8px 18px;padding:0">${fx.map(f => f.type === "room"
+      ? `<li>Put “${esc(f.loc.name)}” in the ${esc(f.room)} room</li>`
+      : `<li>Merge “${esc(f.from.name)}${f.from.room ? " · " + esc(f.from.room) : ""}” (${itemsIn(f.from.id).length} thing${itemsIn(f.from.id).length === 1 ? "" : "s"}) into “${esc(f.to.name)} · ${esc(f.to.room || "")}”</li>`).join("")}</ul>
+    <button class="btn sm" data-tidy="1">Tidy up</button> <span class="hint">Printed tags for merged places stop working; reprint the one that stays.</span></div>`;
+}
+function applyFixes(){
+  let moved = 0;
+  for (const f of placeFixes()) {
+    if (f.type === "room" && S.locs[f.loc.id]) S.locs[f.loc.id] = { ...S.locs[f.loc.id], room: f.room, kind: "general" };
+    if (f.type === "merge" && S.locs[f.from.id] && S.locs[f.to.id]) {
+      itemsIn(f.from.id).forEach(i => { S.items[i.id] = { ...S.items[i.id], locationId: f.to.id }; moved++; });
+      delete S.locs[f.from.id];
+    }
+  }
+  for (const f of placeFixes()) if (f.type === "merge" && S.locs[f.from.id] && S.locs[f.to.id]) {   // a second round, after rooms were filled in
+    itemsIn(f.from.id).forEach(i => { S.items[i.id] = { ...S.items[i.id], locationId: f.to.id }; moved++; });
+    delete S.locs[f.from.id];
+  }
+  saveAll(); renderAll(); toast(`Places tidied${moved ? ` · ${moved} thing${moved === 1 ? "" : "s"} moved` : ""}`);
+}
+document.addEventListener("click", e => { if (e.target.closest("[data-tidy]")) applyFixes(); });
 function renderPlaces(){
   const locs = Object.values(S.locs).sort((a, b) => (a.order || 0) - (b.order || 0) || a.name.localeCompare(b.name));
   const un = itemsIn("");
-  $("#locList").innerHTML = (locs.length ? locs.map(l => {
+  $("#locList").innerHTML = fixesHTML() + (locs.length ? locs.map(l => {
     const its = itemsIn(l.id), miss = its.filter(i => i.status === "missing").length;
     return `<button class="loc" data-loc="${esc(l.id)}"><div style="min-width:0"><div class="name">${esc(l.name)}${l.example ? ` <span class="pill ex">Example</span>` : ""}</div><div class="meta"><span>${esc(locRoom(l))}</span><span>${esc(LOC_KINDS[locKind(l)])}</span><span class="mono">${esc(l.code)}</span>${miss ? `<span class="pill missing">${miss} missing</span>` : ""}</div></div><span class="count">${its.length}<small>items</small></span></button>`;
   }).join("") : `<div class="empty">No places yet. Add your rack, TV stand, desk and game shelf, then print a tag for each.</div>`)
@@ -2221,7 +2301,7 @@ function openMedia(id){
 function zoneHTML(l){
   const all = itemsIn(l.id), its = rfOn() ? all.filter(rfMatch) : all;
   return `<div class="zone k-${locKind(l)}" data-zone="${esc(l.id)}">
-    <button class="zlabel" data-openloc="${esc(l.id)}">${esc(l.name)}<span>${its.length}</span></button><span class="zkind">${esc(LOC_KINDS[locKind(l)])}</span>
+    <button class="zlabel" data-openloc="${esc(l.id)}">${esc(l.kind === "general" ? "Around the room" : l.name)}<span>${its.length}</span></button><span class="zkind">${esc(LOC_KINDS[locKind(l)])}</span>
     <div class="ztiles">${its.map(tileHTML).join("") || `<span class="zempty">${rfOn() && all.length ? "No matches" : "Empty"}</span>`}</div>
     ${S.arrange ? `<div class="zarr"><button data-mv="-1" aria-label="Move earlier">◀</button><button data-mv="1" aria-label="Move later">▶</button><button data-editloc="${esc(l.id)}">Edit</button></div>` : ""}
   </div>`;
@@ -2233,6 +2313,8 @@ function renderMap(){
   $("#layoutBtn").hidden = !S.arrange;
   renderPlan();
   $("#roomHead").textContent = S.mapWall ? S.mapWall + (rfOn() ? " · filtered" : "") : "";
+  $("#putHere").hidden = !S.mapWall || S.mapWall === "Other";
+  $("#roomFix").innerHTML = fixesHTML();
   $("#mapWalls").innerHTML = rs.map(r => { const n = locs.filter(l => locRoom(l) === r).length; return `<button class="chip" data-wall="${esc(r)}" aria-pressed="${S.mapWall === r}">${esc(r)} · ${n}</button>`; }).join("");
   const on = locs.filter(l => locRoom(l) === S.mapWall).sort(byOrder);
   /* filter: departments in this room, then what matches */
@@ -2242,7 +2324,7 @@ function renderMap(){
   $("#roomDept").innerHTML = `<option value="">Everything</option>` + depts.map(d => `<option ${d === S.rf.dept ? "selected" : ""}>${esc(d)}</option>`).join("");
   if ($("#roomQ").value !== S.rf.q) $("#roomQ").value = S.rf.q;
   const shown = rfOn() ? on.filter(l => itemsIn(l.id).some(rfMatch)) : on;
-  $("#wallUp").innerHTML = !on.length ? `<div class="wallnote">Nothing in ${esc(S.mapWall || "this room")} yet. Tap <b>Add place</b> to add its rack, TV stand, desk or shelf.</div>`
+  $("#wallUp").innerHTML = !on.length ? `<div class="wallnote">Nothing in ${esc(S.mapWall || "this room")} yet. <button class="link" data-puthere="1">Put things in this room</button>, or tap <b>Add place</b> to add its rack, TV stand, desk or shelf.</div>`
     : shown.length ? shown.map(zoneHTML).join("") : `<div class="wallnote">Nothing in ${esc(S.mapWall)} matches. <button class="link" data-rfclear="1">Clear the filter</button></div>`;
   /* consoles and players in this room: a button each for their media and accessories */
   const players = roomItems.map(d => [d, mediaFor(d)]).filter(([d, m]) => m && d.status !== "retired" && (!rfOn() || rfMatch(d) || [...m.games, ...m.older, ...m.movies, ...m.music, ...m.acc].some(rfMatch)));
@@ -2254,6 +2336,28 @@ function renderMap(){
   $("#mapLoose").innerHTML = loose.map(tileHTML).join("");
   fillPhotos($("#v-map"));
 }
+/* Pick things from anywhere and put them in this room (anywhere in it, or one of its places). */
+function putInRoom(room){
+  const spots = Object.values(S.locs).filter(l => roomKey(l.room) === roomKey(room) && !isGeneralSpot(l, room)).sort((a, b) => a.name.localeCompare(b.name));
+  const list = Object.values(S.items).filter(i => roomKey(locRoom(S.locs[i.locationId] || { room: "" })) !== roomKey(room) || !i.locationId).sort((a, b) => (a.locationId ? 1 : 0) - (b.locationId ? 1 : 0) || a.name.localeCompare(b.name));
+  openSheet(`<h2>Put things in ${esc(room)}</h2>
+    <div class="form"><label class="full">Where in the room<select id="pr-spot"><option value="room:${esc(room)}">Anywhere in ${esc(room)}</option>${spots.map(l => `<option value="${esc(l.id)}">${esc(l.name)}</option>`).join("")}</select></label>
+    <label class="full">Find<input type="search" id="pr-q" placeholder="Name, brand, console…"></label></div>
+    <div id="pr-list" style="margin-top:10px;max-height:46vh;overflow:auto">${list.map(i => `<label class="li" data-n="${esc(searchText(i))}" style="cursor:pointer"><input type="checkbox" value="${esc(i.id)}"><div class="main"><div class="name">${esc(i.name)}</div><div class="meta"><span>${esc(i.category)}</span><span>${i.locationId ? "now: " + esc(locName(i.locationId)) + ((S.locs[i.locationId] || {}).room ? " · " + esc(S.locs[i.locationId].room) : "") : "not in a place"}</span></div></div></label>`).join("") || `<p class="hint">Everything is already in ${esc(room)}.</p>`}</div>
+    <div class="row end" style="margin-top:14px"><button class="btn ghost" id="pr-c">Cancel</button><button class="btn" id="pr-s">Put here</button></div>`);
+  $("#pr-q").oninput = () => { const q = $("#pr-q").value.trim().toLowerCase(); $("#pr-list").querySelectorAll("[data-n]").forEach(r => r.hidden = !!q && !q.split(/\s+/).every(w => r.dataset.n.includes(w))); };
+  const upd = () => { const n = $("#pr-list").querySelectorAll("input:checked").length; $("#pr-s").textContent = n ? `Put ${n} here` : "Put here"; };
+  $("#pr-list").onchange = upd;
+  $("#pr-c").onclick = closeSheet;
+  $("#pr-s").onclick = () => {
+    const ids = [...$("#pr-list").querySelectorAll("input:checked")].map(c => c.value); if (!ids.length) return toast("Tick the things to put here");
+    const v = $("#pr-spot").value, loc = v.startsWith("room:") ? roomSpot(room) : v;
+    ids.forEach(id => { if (S.items[id]) S.items[id] = { ...S.items[id], locationId: loc }; });
+    saveAll(); closeSheet(); renderAll(); toast(`${ids.length} thing${ids.length === 1 ? "" : "s"} put in ${room}`);
+  };
+}
+$("#putHere").onclick = () => putInRoom(S.mapWall);
+$("#v-map").addEventListener("click", e => { if (e.target.closest("[data-puthere]")) putInRoom(S.mapWall); });
 $("#roomQ").addEventListener("input", e => { S.rf.q = e.target.value; renderMap(); });
 $("#roomDept").addEventListener("change", e => { S.rf.dept = e.target.value; renderMap(); });
 $("#v-map").addEventListener("click", e => {
