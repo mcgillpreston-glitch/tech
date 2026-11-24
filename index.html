@@ -249,6 +249,32 @@ details.netbox .form{padding-bottom:12px}
 .pl-lbl{fill:var(--ink);font-family:var(--display);font-weight:700;text-anchor:middle;pointer-events:none}
 .pl-sub{fill:var(--muted);font-family:var(--body);text-anchor:middle;pointer-events:none}
 #roomHead{margin:4px 0 8px;scroll-margin-top:80px}
+/* Picker: "what are you trying to do?" */
+.pickfab{position:fixed;right:max(16px,calc(50% - 324px));bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:5;display:flex;align-items:center;gap:8px;border:0;border-radius:99px;padding:11px 16px 11px 13px;background:var(--accent);color:var(--accent-ink);font-weight:600;font-size:14px;box-shadow:0 4px 14px rgba(0,0,0,.32)}
+.pickfab svg,.actions .btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+#v-garage{padding-bottom:58px}
+.pkgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pkopt{display:flex;flex-direction:column;align-items:flex-start;gap:3px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:14px;padding:14px;text-align:left;min-height:112px;min-width:0}
+.pkopt:hover{border-color:var(--accent)}
+.pkopt svg{width:28px;height:28px;stroke:var(--accent);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;margin-bottom:6px}
+.pkopt b{font-family:var(--display);font-size:17px;line-height:1.15}
+.pkopt small{color:var(--muted);font-size:12px;line-height:1.3}
+.pkcard{animation:pkin .22s ease-out}
+@keyframes pkin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.pkcard{animation:none}}
+.pkpic{display:grid;place-items:center;width:100%;height:min(46vh,340px);border:0;border-radius:14px;background:var(--sunk);overflow:hidden;padding:0;margin:10px 0 12px;color:var(--muted)}
+.pkpic.small,.pkpic.nopic{height:132px}
+.pkcard a{color:var(--accent);font-weight:600}
+.pkpic{position:relative}
+.pkpic img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.pkpic span{font-family:var(--display);font-weight:700;font-size:56px;color:var(--muted)}
+.pkpic.small span{font-size:38px}
+.pkpic svg{width:46px;height:46px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.pkname{font-family:var(--display);font-weight:700;font-size:23px;line-height:1.15;text-wrap:balance}
+.pkmeta{color:var(--muted);font-size:14px;margin:2px 0 10px}
+.pktag{font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:0 0 4px}
+.pkwhy{margin:6px 0 10px;max-width:62ch}
+.pksteps{margin:0 0 12px;padding-left:22px;display:flex;flex-direction:column;gap:6px;font-size:14.5px;max-width:62ch}
 /* Camera or gallery chooser */
 .srcpick{position:fixed;inset:0;z-index:350;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;padding:16px 16px max(16px,env(safe-area-inset-bottom))}
 .srccard{width:100%;max-width:420px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
@@ -463,6 +489,7 @@ nav.tabs button[aria-current="page"]{color:var(--accent);font-weight:600}
     <div id="consoleTree"></div>
     <div class="shelf" id="shelf"></div>
     <p class="row" id="exampleNote" hidden style="margin-top:14px"><span class="hint">Things and places tagged Example are samples.</span><button class="link" id="clearEx">Remove examples</button></p>
+    <button class="pickfab" id="pickBtn" aria-label="Pick something for me: a movie, a game, music or a project"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.500 8.500h.01M15.500 8.500h.01M12 12h.01M8.500 15.500h.01M15.500 15.500h.01"/></svg>Pick for me</button>
   </section>
 
   <!-- SCAN -->
@@ -1477,6 +1504,7 @@ function openItem(id){
   const p = it.purchase || {};
   const price = isTool(it) ? p.price : it.price, store = isTool(it) ? p.store : it.store;
   add("Bought", esc([money(price), store, p.date && fmtDate(p.date)].filter(Boolean).join(" · ")));
+  if (it.picked) add("Last picked", fmtDate(it.picked));
   if (it.warrantyUntil) add("Warranty", `until ${fmtDate(it.warrantyUntil)}${it.warrantyUntil < today() ? ` <span class="pill missing">Expired</span>` : daysUntil(it.warrantyUntil) <= 60 ? ` <span class="pill repair">${daysUntil(it.warrantyUntil)} days left</span>` : ""}`);
   if (it.manualUrl) add("Manual", `<a href="${esc(it.manualUrl)}" target="_blank" rel="noopener">Open manual</a>`);
   add("Barcode", it.barcode ? `<span class="mono">${esc(it.barcode)}</span>` : "");
@@ -2867,6 +2895,386 @@ function openLayoutEditor(){
 
   requestAnimationFrame(() => { fit(); render(); });
 }
+
+/* ---------- picker: "what are you trying to do?" ----------
+   Movies, games and music: a random pick from what you own and can use right now, shown with its picture.
+   Projects: ideas for gear you're not using (marked as spare), ways to get more from what's in use,
+   and loose ends in your records. Picks you go with sit out for two weeks. */
+const PK = { kind: "", f: {}, queue: [], cur: null };
+const PK_KINDS = {
+  movie: { title: "Watch a movie", noun: "movie", is: i => i.department === "Movies & Music" && /Blu-ray|DVDs/.test(i.category || "") },
+  game: { title: "Play a game", noun: "game", is: i => i.department === "Video Games" },
+  music: { title: "Listen to music", noun: "album", is: i => i.department === "Movies & Music" && /Vinyl|CDs/.test(i.category || "") },
+  project: { title: "Start a project", noun: "idea" }
+};
+const PK_GROUPS = { spare: "Unused gear", improve: "Get more from your gear", records: "Tidy up your records" };
+const PK_ICONS = {
+  movie: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18M3 15h18M8 5v14M16 5v14"/></svg>`,
+  game: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="7" width="20" height="11" rx="5"/><path d="M7 11v3M5.5 12.5h3M15.5 11.5h.01M18 13.5h.01"/></svg>`,
+  music: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg>`,
+  project: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.400 1 2.500h6c0-1.100.3-1.800 1-2.500A6 6 0 0 0 12 3z"/></svg>`,
+  dice: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.500 8.500h.01M15.500 8.500h.01M12 12h.01M8.500 15.500h.01M15.500 15.500h.01"/></svg>`
+};
+const pkAvail = i => !i.status || i.status === "available" || i.status === "spare";
+const pkWhere = it => { const l = S.locs[it.locationId]; return !l ? "" : l.kind === "general" || !String(l.room || "").trim() || roomKey(l.room) === roomKey(l.name) ? l.name : `${l.name} · ${l.room}`; };
+const pkRecent = it => !!it.picked && daysSince(it.picked) < 14;
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many || one + "s"}`;
+function pkShuffle(arr){ const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+/* What a movie, album or game can be played on (among things that are home and working). */
+function pkPlayers(it){
+  if (it.department === "Video Games") return playsOn(it).filter(pkAvail);
+  return Object.values(S.items).filter(d => isDevice(d) && pkAvail(d)).filter(d => { const m = mediaFor(d); return m && (m.movies.includes(it) || m.music.includes(it)); });
+}
+let pkHidden = []; try { pkHidden = JSON.parse(localStorage.getItem("techstock.ideas.hidden") || "[]"); } catch(e){}
+
+/* ---- project ideas ---- */
+function pkIdeas(){
+  const all = Object.values(S.items), devs = all.filter(d => isDevice(d) && d.status !== "retired");
+  const spare = devs.filter(d => d.status === "spare"), inUse = devs.filter(d => d.status === "available");
+  const c = (d, re) => re.test(d.category || ""), full = d => [d.name, d.brand, d.model].join(" ");
+  const smart = devs.filter(d => d.department === "Smart Home");
+  const screens = devs.filter(d => c(d, /^TVs$|Projectors|Streaming Devices/));
+  const router = inUse.find(d => c(d, /Routers & Gateways/)) || inUse.find(isWifiSource);
+  const modem = inUse.find(d => c(d, /Modems/)), nvrs = inUse.filter(isNvr);
+  const movies = all.filter(i => i.status !== "retired" && PK_KINDS.movie.is(i));
+  const names = (arr, n = 3) => arr.slice(0, n).map(d => d.name).join(", ") + (arr.length > n ? ` and ${arr.length - n} more` : "");
+  const out = [];
+  const add = (group, key, dev, title, why, steps, q, act) => out.push({ group, key: dev ? `${key}:${dev.id}` : key, dev, title, why, steps: steps || [], q, act });
+  /* camera capacity, used by two ideas */
+  const nvrFree = nvrs.map(n => ({ nvr: n, free: num(n.channels) - camerasOn(n.id).length })).filter(x => num(x.nvr.channels) && x.free > 0).sort((a, b) => b.free - a.free)[0];
+  const poeSpare = inUse.filter(d => num(d.poeBudget) > 0).map(sw => ({ sw, w: +(num(sw.poeBudget) - poeUse(sw.id)).toFixed(1) })).filter(x => x.w >= 8).sort((a, b) => b.w - a.w)[0];
+  const capacity = [nvrFree ? `${nvrFree.nvr.name} has ${plural(nvrFree.free, "free channel")}` : "", poeSpare ? `${poeSpare.sw.name} has ${poeSpare.w} W of PoE power to spare` : ""].filter(Boolean).join(", and ");
+
+  /* -- gear marked as spare -- */
+  for (const d of spare) {
+    const n = d.name, before = out.length;
+    if (/raspberry|\brpi\b|\bpi (zero|[0-9])/i.test(full(d)) || c(d, /Desktops|Laptops|Servers & Mini PCs/)) {
+      add("spare", "server", d, `Turn ${n} into a mini home server`, `${n} is marked as a spare. An always-on computer on your network can hold shared files and backups for the whole house.`, [
+        "Wipe it and install a server system. Ubuntu Server is a good start, or TrueNAS if it's mainly for storage.",
+        "Plug it into your router or switch with a cable and give it a fixed IP address.",
+        "Start with one job, such as a shared folder that your other computers back up to.",
+        "Record its IP address and hostname here under Network & power."], "turn an old pc into a home server beginner guide");
+      add("spare", "pihole", d, `Block ads on every device with ${n}`, `Pi-hole runs on almost any spare computer and filters ads and trackers for the whole network${router ? `, through ${router.name}` : ""}.`, [
+        "Install Pi-hole on it. It runs on Linux, or inside Docker.",
+        "Give it a fixed IP address.",
+        `Set that address as the DNS server in your router's settings${router ? ` (${router.name}${router.ip ? ", at " + router.ip : ""})` : ""}.`,
+        "Look at the Pi-hole dashboard after a day to see what it blocked."], "pi-hole setup guide for beginners");
+      if (smart.length) add("spare", "ha", d, `Run your smart home from ${n}`, `You have ${plural(smart.length, "smart home device")}. Home Assistant puts them on one dashboard and lets them work together, without relying on each maker's cloud.`, [
+        "Install Home Assistant OS on it (this replaces what's on the drive).",
+        "Plug it into the router or switch and open its setup page from another device.",
+        "Add your devices; many are found automatically.",
+        "Start with one automation, such as lights on at sunset."], "home assistant installation getting started");
+      if (screens.length) add("spare", "media", d, `Make ${n} a media server`, `Jellyfin or Plex can stream your own videos, music and photos to ${screens[0].name}${screens.length > 1 ? ` and ${plural(screens.length - 1, "other screen")}` : ""}.`, [
+        "Install Jellyfin (free) or Plex on it.",
+        "Copy your home videos, music and photos onto its drive, in separate folders.",
+        "Install the matching app on your TV, streaming box or console and sign in.",
+        "Plug it in with a cable rather than Wi-Fi, so video doesn't stutter."], "jellyfin media server setup guide");
+    }
+    if (c(d, /Routers & Gateways|Mesh Wi-Fi & Access Points/)) add("spare", "ap", d, `Use ${n} as a second Wi-Fi access point`, `${n} is spare. Set up as an access point, it fixes a weak Wi-Fi spot at the far end of the house.`, [
+      "Reset it, then switch it to access point (or bridge) mode in its settings. If it has no such mode, turn off its DHCP server instead.",
+      `Run a network cable from ${router ? router.name : "your main router"} or a switch to one of its LAN ports.`,
+      "Give it the same Wi-Fi name and password as your main network, on a different channel.",
+      "Add its connection here: Wired, plugged into the router or switch."], "use old router as wifi access point");
+    if (c(d, /Switches/)) { const onWifiNow = inUse.filter(x => onWifi(x) && c(x, /Game Consoles|Desktops|^TVs$|Streaming Devices/));
+      add("spare", "switch", d, `Wire up a room with ${n}`, `A cable is faster and steadier than Wi-Fi for consoles, TVs and PCs.${onWifiNow.length ? ` ${names(onWifiNow, 2)} ${onWifiNow.length === 1 ? "is" : "are"} on Wi-Fi now.` : ""}${c(d, /PoE/) ? " It can also power PoE cameras and access points over the same cable." : ""}`, [
+        "Put the switch behind the TV stand or desk.",
+        "Run one cable from the router or the main switch to it.",
+        "Plug the consoles, TV and streaming box into it.",
+        "Update each device's Plugged into and Port here."], "how to add a network switch to a home network"); }
+    if (c(d, /NAS/)) add("spare", "nas", d, `Set up automatic backups on ${n}`, `A spare NAS is ideal for backing up every computer in the house.`, [
+      "Fit its drives and plug it into the router or switch.",
+      "Create a shared folder for backups.",
+      "On each computer, turn on File History (Windows) or Time Machine (Mac) and point it at that folder.",
+      "Record its IP address here."], "set up a nas for home backups");
+    if (c(d, /Drives & SSDs|Surveillance Hard Drives/)) add("spare", "drive", d, `Make ${n} a backup drive`, `A spare drive makes a simple backup for your main computer.`, [
+      "If it's a bare drive, put it in a USB enclosure or dock.",
+      "Plug it into your main computer.",
+      "Turn on File History (Windows) or Time Machine (Mac) and choose the drive.",
+      "Keep a second copy of the things that matter most somewhere else, in case of fire or theft."], "set up external drive backup file history time machine");
+    if (c(d, /USB Drives & Memory Cards/)) add("spare", "usb", d, `Make ${n} a rescue USB stick`, `A bootable USB stick gets a broken computer running again, or reinstalls it.`, [
+      "On a working computer, download the Windows or Linux installer.",
+      "Write it to the stick with the Media Creation Tool, Rufus or balenaEtcher. This erases the stick.",
+      "Label it and keep it with your repair kit."], "create bootable usb installer");
+    if (c(d, /Monitors/)) add("spare", "monitor", d, `Add ${n} as a second screen`, `A second screen helps at a desk. It also works as an always-on display for camera feeds or a calendar.`, [
+      "Check which ports it has (HDMI, DisplayPort, VGA) and which cable you need.",
+      "Plug it into your PC, laptop or dock and choose Extend in the display settings.",
+      "Or pair it with a spare mini PC to show camera feeds or the smart home dashboard."], "set up a second monitor");
+    if (c(d, /^TVs$|Projectors/)) { const sc = spare.find(x => c(x, /Game Consoles|Retro Consoles|Streaming Devices/));
+      add("spare", "tv", d, `Set up a second screen spot with ${n}`, `${n} is spare${sc ? `, and so is ${sc.name}` : ""}: enough for a second spot in the garage, game room or guest room.`, [
+        "Pick the room and check there's power and a Wi-Fi signal.",
+        "Add a streaming stick or a console for something to watch or play.",
+        "Add a place for it in that room here, then move the gear into it."], "ideas for a spare tv"); }
+    if (c(d, /Streaming Devices/)) add("spare", "stream", d, `Make an older TV smart with ${n}`, `A spare streaming device gives any TV with an HDMI port your streaming apps.`, [
+      "Plug it into a free HDMI port and power.",
+      "Sign in to your streaming apps.",
+      "Or keep it in a travel bag for hotel TVs."]);
+    if (c(d, /^Phones$/)) add("spare", "phone", d, `Turn ${n} into a security camera or baby monitor`, `An old phone has a good camera, Wi-Fi and a battery: everything a monitoring camera needs.`, [
+      "Wipe it and connect it to Wi-Fi.",
+      "Install a camera app such as Alfred Camera or AtHome on it, and on your own phone.",
+      "Mount it where it can see the door, the garage or the crib, and leave it on charge."], "use an old phone as a security camera");
+    if (c(d, /^Tablets$/)) add("spare", "tablet", d, `Make ${n} a wall panel or photo frame`, `${smart.length ? `With ${plural(smart.length, "smart home device")}, a` : "A"} wall-mounted tablet makes a handy control panel. It also works as a digital photo frame or a kitchen recipe screen.`, [
+      "Wipe it and update it.",
+      "Install your smart home app, or a photo-frame app such as Fotoo.",
+      "Mount it near power and set the screen to stay on while charging."], "old tablet wall mounted smart home dashboard");
+    if (c(d, /Game Consoles|Handheld Consoles|Retro Consoles/) && PLAT[d.platform]) {
+      const disc = /digital/i.test(full(d)) ? "" : MOVIE_CONSOLES[d.platform];
+      const g = gamesFor(d.platform).length + (COMPAT[d.platform] || []).reduce((t, p) => t + gamesFor(p).length, 0);
+      if (disc) add("spare", "player", d, `Use ${n} as a ${disc === "bd" ? "Blu-ray" : "DVD"} player`, `It plays ${disc === "bd" ? "Blu-rays and DVDs" : "DVDs"}${movies.length ? `, and you have ${plural(movies.length, "movie")} on disc` : ""}.`, [
+        "Move it to a TV that has no disc player.",
+        "Plug in HDMI and power. A controller works as the remote.",
+        "Update its place here."]);
+      if (g) add("spare", "spot", d, `Set up a second gaming spot with ${n}`, `You have ${plural(g, "game")} it can play.`, [
+        "Pair it with a spare TV or monitor.",
+        "Find its controller and charge it, or add batteries.",
+        "Move it to its new room here."]);
+    }
+    if (c(d, /PoE IP Cameras|Wi-Fi Cameras|Doorbell Cameras/)) add("spare", "cam", d, `Cover a blind spot with ${n}`, capacity ? `${capacity[0].toUpperCase() + capacity.slice(1)}.` : `The driveway, back door, garage and side gate are the usual gaps.`, [
+      "Walk around outside and note where the current cameras can't see.",
+      c(d, /PoE/) ? "Run a network cable from the PoE switch to that spot." : "Check the Wi-Fi signal at that spot.",
+      "Mount it and add it to the recorder.",
+      "Set its port, PoE draw and NVR channel here."], "where to place home security cameras");
+    if (c(d, /Smart Plugs & Switches/)) add("spare", "plug", d, `Put a lamp or the holiday lights on a schedule with ${n}`, `A spare smart plug is the easiest bit of home automation.`, [
+      "Add the plug in its app.",
+      "Plug in a lamp, a fan or the holiday lights.",
+      "Set a schedule, such as on at sunset and off at bedtime."]);
+    if (c(d, /Smart Speakers & Displays/)) add("spare", "speaker", d, `Add voice control to another room with ${n}`, `Kitchens, garages and bedrooms are where a second one helps most.`, [
+      "Pick a room without one.",
+      "Set it up in its app and assign it to that room.",
+      "Use it for timers and music, and as an intercom between rooms."]);
+    if (c(d, /^Speakers$|Soundbars|AV Receivers|Subwoofers|Bluetooth Speakers/)) add("spare", "sound", d, `Upgrade the sound on another screen with ${n}`, `Built-in TV and monitor speakers are thin. Spare speakers fix that.`, [
+      "Pick the TV or PC that sounds worst.",
+      "Check how it connects: HDMI ARC, optical, 3.5 mm or Bluetooth.",
+      "Hook it up and update its place here."]);
+    if (c(d, /UPS/)) add("spare", "upsuse", d, `Keep the internet on in a power cut with ${n}`, `A battery backup on the modem and router keeps Wi-Fi${nvrs.length ? " and the camera recorder" : ""} running through short outages.`, [
+      `Plug ${[modem, router, nvrs[0]].filter(Boolean).map(x => x.name).join(", ") || "the modem and router"} into its battery-backed outlets.`,
+      "Leave printers and heaters off it. They drain it fast.",
+      "Test it by pulling its plug for a minute."], "what to plug into a ups home network");
+    if (out.length === before) add("spare", "rehome", d, `Sell, donate or recycle ${n}`, `It's marked as a spare, and there's no obvious second job for it.`, [
+      "Back up anything on it, then factory-reset or wipe it.",
+      "Check what it sells for used, or find a local electronics recycler or donation program.",
+      "Mark it as Retired here once it's gone."], `sell or recycle used ${String(d.category || "electronics").toLowerCase()}`);
+  }
+
+  /* -- more from what's in use -- */
+  if (nvrFree) add("improve", "addcam", nvrFree.nvr, `Add another camera`, `${capacity[0].toUpperCase() + capacity.slice(1)}.`, [
+    "Decide where there's a gap: driveway, back door, garage or side gate.",
+    "A typical PoE camera draws 5 to 12 W, so check the switch's spare power first.",
+    "Run the cable, mount the camera and add it to the recorder.",
+    "Add it here with its port, PoE draw and NVR channel."], "where to place home security cameras");
+  const critical = inUse.filter(d => c(d, /Modems|Routers|NAS|NVR|Servers/));
+  if (!devs.some(d => c(d, /UPS/)) && critical.length >= 2) add("improve", "ups", null, `Add a battery backup (UPS)`, `${names(critical)} all go down in a power cut. A small UPS keeps them running through short outages and protects them from surges.`, [
+    "Add up roughly what they draw. A modem, router and switch together are usually under 60 W.",
+    "A 400 to 600 VA unit is enough for network gear. Go bigger for a NAS or server.",
+    "Plug only the essentials into the battery-backed outlets."], "what size ups for home network",
+    { label: "Add a UPS to the shopping list", run: () => { const x = { id: newId("x"), name: "UPS battery backup", added: Date.now() }; S.extras[x.id] = x; saveAll(); renderAll(); toast("Added to your shopping list"); } });
+  if (smart.length >= 3 && router) add("improve", "iot", router, `Give smart devices their own Wi-Fi network`, `You have ${plural(smart.length, "smart home device")}. On a separate guest or IoT network, a hacked or faulty gadget can't reach your computers.`, [
+    `Open ${router.name}'s settings${router.ip ? ` at ${router.ip}` : ""} and turn on the guest network, or create a separate one for smart devices.`,
+    "Move plugs, bulbs, cameras and speakers onto it, a few at a time.",
+    "Keep phones, computers and storage on the main network.",
+    "Note the network name on each device here under Wi-Fi network."], "put smart home devices on a separate guest network");
+  const store = inUse.find(d => c(d, /NAS/)) || inUse.find(d => c(d, /Servers & Mini PCs/)), comps = inUse.filter(d => c(d, /Desktops|Laptops/));
+  if (store && comps.length) add("improve", "backup", store, `Back up your computers to ${store.name}`, `${names(comps)} could back up to it automatically.`, [
+    `Create a shared folder for backups on ${store.name}.`,
+    "On each computer, turn on File History (Windows) or Time Machine (Mac) and point it at that folder.",
+    "Check after a week that backups are arriving."], "back up computers to a nas automatically");
+  inUse.filter(d => onWifi(d) && c(d, /Game Consoles|Desktops|^TVs$|Streaming Devices|NAS/)).slice(0, 3).forEach(d => add("improve", "wire", d, `Give ${d.name} a network cable`, `It's on Wi-Fi now. A cable makes downloads, streaming and online play faster and steadier.`, [
+    "Check for a spare port on the router or a nearby switch.",
+    "Run a Cat6 cable. Flat cables hide well along skirting boards.",
+    "Change its Connection to Wired here and set the port."], "ethernet vs wifi for gaming and streaming"));
+  inUse.filter(d => c(d, /Retro Consoles/) && PLAT[d.platform]).forEach(d => { const g = gamesFor(d.platform).filter(pkAvail);
+    if (g.length) add("improve", "retro", d, `Dust off the ${d.name}`, `You have ${plural(g.length, "game")} for it, including ${names(g, 2)}.`, [
+      "Check its cables and the TV's inputs. Older consoles may need an HDMI adapter.",
+      "Clean cartridge contacts with a cotton swab and isopropyl alcohol.",
+      "Pick a game with the picker and play."], "connect a retro console to a modern tv"); });
+  const noFw = inUse.filter(d => (c(d, /Routers|Mesh|Switches|NVR|NAS|Cameras|Firewalls/)) && !d.firmware);
+  if (noFw.length) add("improve", "fw", router || noFw[0], `Check for firmware updates`, `Router, camera and recorder updates fix security holes. ${plural(noFw.length, "network device")} ${noFw.length === 1 ? "has" : "have"} no firmware version recorded here, including ${names(noFw, 2)}.`, [
+    "Open each device's admin page or app and look for Firmware or System update.",
+    "Install the update and let the device restart.",
+    "Record the version here under Network & power."]);
+
+  /* -- loose ends in your records -- */
+  const issues = netIssues().list;
+  if (issues.length) add("records", "netfix", null, `Fix ${plural(issues.length, "network problem")}`, issues[0].t, [], null, { label: "Open Network", run: () => { closeSheet(); showTab("net"); } });
+  const noIp = inUse.filter(d => (/^(Networking|Security Cameras)/.test(d.department || "") || d.uplink) && !d.ip);
+  if (noIp.length) add("records", "noip", null, `Finish your network map`, `${plural(noIp.length, "network device")} ${noIp.length === 1 ? "has" : "have"} no IP address recorded, including ${names(noIp, 2)}.`, [
+    "Open your router's list of connected devices.",
+    "Match each one by name or MAC address.",
+    "Fill in the IP address under Network & power."], null, { label: "Open Network", run: () => { closeSheet(); showTab("net"); } });
+  const noSerial = devs.filter(d => !d.serial && !/^(Cables|Install|Power)/.test(d.department || "") && !c(d, /Controllers|Accessories|Mounts|Remotes/));
+  if (noSerial.length >= 3) add("records", "serial", null, `Add serial numbers for insurance`, `${plural(noSerial.length, "device")} have no serial number, including ${names(noSerial, 2)}. Insurers and the police ask for them after a theft or fire.`, [
+    "Open a device and tap Edit.",
+    "Tap Scan next to Serial number and point the camera at the barcode on its label.",
+    "When you're done, download the insurance list from Settings."]);
+  devs.filter(d => d.warrantyUntil && daysUntil(d.warrantyUntil) >= 0 && daysUntil(d.warrantyUntil) <= 60).slice(0, 3).forEach(d => add("records", "warranty", d, `Test ${d.name} before its warranty ends`, `The warranty runs out on ${fmtDate(d.warrantyUntil)}, ${plural(daysUntil(d.warrantyUntil), "day")} from now.`, [
+    "Try every port, button and feature.",
+    "Look for dead pixels, battery wear or odd noises.",
+    "If anything's wrong, start a claim now. You'll need the serial number and the receipt."]));
+  const loose = all.filter(i => i.status !== "retired" && !i.locationId);
+  if (loose.length) add("records", "home", null, `Give everything a place`, `${plural(loose.length, "thing")} ${loose.length === 1 ? "isn't" : "aren't"} in a room or place yet, including ${names(loose, 2)}.`, [
+    "Open Rooms and go into a room.",
+    "Tap Put things in this room and tick what lives there."], null, { label: "Open Rooms", run: () => { closeSheet(); showTab("map"); } });
+  const fx = placeFixes().length;
+  if (fx) add("records", "tidy", null, `Tidy up ${plural(fx, "duplicate place")}`, `Some places are listed twice, or aren't in a room.`, ["Open Places and tap Tidy up."], null, { label: "Open Places", run: () => { closeSheet(); showTab("places"); } });
+  return out.filter(x => !pkHidden.includes(x.key));
+}
+
+/* ---- the picker itself ---- */
+function openPicker(){
+  const live = Object.values(S.items).filter(i => i.status !== "retired");
+  const n = k => live.filter(i => PK_KINDS[k].is(i) && pkAvail(i)).length, ideas = pkIdeas(), sp = ideas.filter(x => x.group === "spare").length;
+  const opt = (k, sub) => `<button class="pkopt" data-pk="${k}">${PK_ICONS[k]}<b>${PK_KINDS[k].title}</b><small>${sub}</small></button>`;
+  openSheet(`<h2>What are you trying to do?</h2>
+    <p class="lede" style="margin-bottom:10px">Choose one and I'll pick something from what you have.</p>
+    <div class="pkgrid">
+      ${opt("movie", n("movie") ? `${plural(n("movie"), "movie")} to choose from` : "No movies added yet")}
+      ${opt("game", n("game") ? `${plural(n("game"), "game")} to choose from` : "No games added yet")}
+      ${opt("music", n("music") ? `${plural(n("music"), "album")} to choose from` : "No records or CDs added yet")}
+      ${opt("project", sp ? `${plural(sp, "idea")} for gear you're not using${ideas.length > sp ? `, ${ideas.length - sp} more` : ""}` : ideas.length ? `${plural(ideas.length, "idea")} for your gear` : "Ideas for gear you're not using")}
+    </div>
+    <div class="minor"><button class="link" data-pk-close="1" style="margin-left:auto">Close</button></div>`);
+  $("#sheetCard").onclick = e => { const b = e.target.closest("[data-pk]"); if (b) return pkStart(b.dataset.pk); if (e.target.closest("[data-pk-close]")) closeSheet(); };
+}
+function pkPool(){
+  const k = PK_KINDS[PK.kind], all = Object.values(S.items).filter(i => i.status !== "retired" && k.is(i));
+  const home = all.filter(pkAvail); let list = home;
+  if (PK.kind === "movie" && PK.f.fmt) list = list.filter(i => PK.f.fmt === "dvd" ? i.category === "DVDs" : /Blu-ray/.test(i.category));
+  if (PK.kind === "music" && PK.f.fmt) list = list.filter(i => PK.f.fmt === "cd" ? i.category === "CDs" : /Vinyl/.test(i.category));
+  if (PK.kind === "game") {
+    const owned = pkOwnedPlats();
+    if (PK.f.plat) list = list.filter(i => owned.length ? playsOnPlat(i.platform, PK.f.plat) : i.platform === PK.f.plat);
+    if (PK.f.can) list = list.filter(i => playsOn(i).some(pkAvail));
+  }
+  return { all, home, list };
+}
+const pkOwnedPlats = () => [...new Set(consolesOwned().filter(pkAvail).map(x => x.platform))];
+function pkRefill(){
+  if (PK.kind === "project") {
+    const ideas = pkIdeas().filter(x => !PK.f.grp || x.group === PK.f.grp);
+    PK.queue = [...pkShuffle(ideas.filter(x => x.group === "spare")), ...pkShuffle(ideas.filter(x => x.group !== "spare"))];
+  } else {
+    const sh = pkShuffle(pkPool().list);
+    PK.queue = [...sh.filter(i => !pkRecent(i)), ...sh.filter(pkRecent)];
+  }
+  const key = x => PK.kind === "project" ? x.key : x.id;
+  if (PK.queue.length > 1 && PK.cur && key(PK.queue[0]) === PK.cur) PK.queue.push(PK.queue.shift());   // never the same one twice in a row
+}
+function pkStart(kind){ PK.kind = kind; PK.f = {}; PK.cur = null; pkRefill(); pkNext(); }
+function pkNext(){
+  if (!PK.queue.length) pkRefill();
+  const x = PK.queue.shift() || null;
+  PK.cur = x ? (PK.kind === "project" ? x.key : x.id) : null;
+  PK.kind === "project" ? pkShowIdea(x) : pkShowItem(x);
+}
+const pkChip = (k, v, label, on) => `<button class="chip" data-p="f" data-k="${k}" data-v="${esc(v)}" aria-pressed="${on}">${esc(label)}</button>`;
+const pkPic = (it, cls = "") => `<button class="pkpic ${cls}${it && it.hasPhoto ? "" : " nopic"}" ${it ? `data-p="open" data-id="${esc(it.id)}" aria-label="Open ${esc(it.name)}"` : "disabled"}>${it && it.hasPhoto ? `<img ${imgSrc(it)} alt="">` : it ? `<span>${esc(initials(it.name))}</span>` : PK_ICONS.project}</button>`;
+function pkShowItem(it){
+  const k = PK_KINDS[PK.kind], { all, home, list } = pkPool(), away = all.length - home.length;
+  let chips = "";
+  if (PK.kind === "movie") { const bd = home.filter(i => /Blu-ray/.test(i.category)).length, dvd = home.filter(i => i.category === "DVDs").length;
+    if (bd && dvd) chips = pkChip("fmt", "", `Any · ${home.length}`, !PK.f.fmt) + pkChip("fmt", "bd", `Blu-ray & 4K · ${bd}`, PK.f.fmt === "bd") + pkChip("fmt", "dvd", `DVD · ${dvd}`, PK.f.fmt === "dvd"); }
+  if (PK.kind === "music") { const v = home.filter(i => /Vinyl/.test(i.category)).length, cd = home.filter(i => i.category === "CDs").length;
+    if (v && cd) chips = pkChip("fmt", "", `Any · ${home.length}`, !PK.f.fmt) + pkChip("fmt", "vinyl", `Vinyl · ${v}`, PK.f.fmt === "vinyl") + pkChip("fmt", "cd", `CD · ${cd}`, PK.f.fmt === "cd"); }
+  if (PK.kind === "game") {
+    const owned = pkOwnedPlats(), plats = (owned.length ? owned : [...new Set(home.map(i => i.platform).filter(p => PLAT[p]))])
+      .map(p => [p, home.filter(i => owned.length ? playsOnPlat(i.platform, p) : i.platform === p).length]).filter(([, c2]) => c2).sort((a, b) => b[1] - a[1]);
+    const cant = home.filter(i => !playsOn(i).some(pkAvail)).length;
+    if (plats.length > 1 || cant) chips = pkChip("plat", "", `Any console · ${home.length}`, !PK.f.plat) + plats.map(([p, c2]) => pkChip("plat", p, `${platName(p)} · ${c2}`, PK.f.plat === p)).join("")
+      + (owned.length && cant && cant < home.length ? pkChip("can", "1", "Only ones I can play", !!PK.f.can) : "");
+  }
+  const head = `<button class="link" data-p="back">‹ Back</button><h2>${k.title}</h2>${chips ? `<div class="chips" style="margin:6px 0 2px">${chips}</div>` : ""}`;
+  if (!it) {
+    const none = !all.length;
+    openSheet(`${head}<div class="empty" style="margin:14px 0">${none ? `No ${k.noun}s in your list yet. Add ${PK.kind === "game" ? "your games under Video Games" : PK.kind === "movie" ? "your DVDs and Blu-rays under Movies & Music" : "your records and CDs under Movies & Music"}, and the picker chooses from them.` : !home.length ? `All ${plural(all.length, k.noun)} are lent out, away or missing right now.` : `No ${k.noun}s match that filter.`}</div>
+      <div class="actions">${none ? `<button class="btn full" data-p="addone">Add a ${k.noun}</button>` : `<button class="btn full" data-p="clear">Show all ${k.noun}s</button>`}</div>
+      <div class="minor"><button class="link" data-p="close" style="margin-left:auto">Close</button></div>`);
+  } else {
+    const players = pkPlayers(it), where = pkWhere(it);
+    const sub = PK.kind === "game" ? [platName(it.platform), GAME_FORMATS[it.format]].filter(Boolean).join(" · ") : String(it.category || "").replace(/ Discs$| Records$/, "").replace(/s$/, "");
+    const playOn = players.length ? players.map(p => `<button class="link" data-p="open" data-id="${esc(p.id)}">${esc(p.name)}</button>${pkWhere(p) ? ` <span class="hint">(${esc(pkWhere(p))})</span>` : ""}`).join(", ")
+      : `<span class="hint">${PK.kind === "game" ? `No ${esc(platName(it.platform) || "console")} at home to play it on` : "No player recorded for it"}</span>`;
+    openSheet(`${head}
+      <div class="pkcard">${pkPic(it)}
+        <div class="pkname">${esc(it.name)}</div>
+        <p class="pkmeta">${esc(sub)}${it.picked ? ` · last picked ${fmtDate(it.picked)}` : ""}</p>
+        <dl class="facts"><dt>Where it is</dt><dd>${where ? esc(where) : `<span class="hint">Not in a place yet</span>`}</dd><dt>${PK.kind === "game" ? "Play it on" : PK.kind === "movie" ? "Watch it on" : "Play it on"}</dt><dd>${playOn}</dd></dl>
+      </div>
+      <div class="actions"><button class="btn" data-p="again" ${list.length > 1 ? "" : "disabled"}>${PK_ICONS.dice}Pick another</button><button class="btn ghost" data-p="go">Good pick</button></div>
+      <p class="hint" style="margin:10px 0 0">${plural(list.length, k.noun)} to choose from${away ? ` · ${away} lent out or away` : ""}. Good pick keeps it out of the picks for two weeks.</p>
+      <div class="minor"><button class="link" data-p="open" data-id="${esc(it.id)}">Open ${esc(it.name)}</button><button class="link" data-p="close" style="margin-left:auto">Close</button></div>`);
+  }
+  $("#sheetCard").onclick = pkClick;
+}
+function pkShowIdea(x){
+  const ideas = pkIdeas(), counts = g => ideas.filter(i => i.group === g).length, shown = ideas.filter(i => !PK.f.grp || i.group === PK.f.grp);
+  const groups = Object.keys(PK_GROUPS).filter(counts);
+  const chips = groups.length > 1 ? pkChip("grp", "", `All · ${ideas.length}`, !PK.f.grp) + groups.map(g => pkChip("grp", g, `${PK_GROUPS[g]} · ${counts(g)}`, PK.f.grp === g)).join("") : "";
+  const spareN = Object.values(S.items).filter(d => isDevice(d) && d.status === "spare").length;
+  const head = `<button class="link" data-p="back">‹ Back</button><h2>Start a project</h2>${chips ? `<div class="chips" style="margin:6px 0 2px">${chips}</div>` : ""}`;
+  const spareTip = `<p class="hint" style="margin:10px 0 0">${spareN ? `${plural(spareN, "device")} marked as spare.` : "Nothing is marked as spare yet, so there are no ideas for unused gear."} <button class="link" data-p="spares">Choose what's not being used</button></p>`;
+  if (!x) {
+    openSheet(`${head}<div class="empty" style="margin:14px 0">No project ideas right now. Tell me what's sitting unused, such as an old PC, router, tablet or console, and I'll suggest what to do with it.</div>
+      <div class="actions"><button class="btn full" data-p="spares">Choose what's not being used</button></div>
+      <div class="minor">${pkHidden.length ? `<button class="link" data-p="unhide">Bring back ${plural(pkHidden.length, "hidden idea")}</button>` : ""}<button class="link" data-p="close" style="margin-left:auto">Close</button></div>`);
+  } else {
+    openSheet(`${head}
+      <div class="pkcard">${pkPic(x.dev, "small")}
+        <p class="pktag">${esc(PK_GROUPS[x.group])}</p>
+        <div class="pkname">${esc(x.title)}</div>
+        <p class="pkwhy">${esc(x.why)}</p>
+        ${x.steps.length ? `<ol class="pksteps">${x.steps.map(s2 => `<li>${esc(s2)}</li>`).join("")}</ol>` : ""}
+        ${x.q ? `<p style="margin:0 0 12px"><a href="https://www.google.com/search?q=${encodeURIComponent(x.q)}" target="_blank" rel="noopener">Find a how-to guide ›</a></p>` : ""}
+      </div>
+      <div class="actions"><button class="btn" data-p="again" ${shown.length > 1 ? "" : "disabled"}>${PK_ICONS.dice}Another idea</button>${x.act ? `<button class="btn ghost" data-p="act">${esc(x.act.label)}</button>` : x.dev ? `<button class="btn ghost" data-p="open" data-id="${esc(x.dev.id)}">Open ${esc(x.dev.name.length > 18 ? "it" : x.dev.name)}</button>` : `<button class="btn ghost" data-p="hide">Not for me</button>`}</div>
+      ${spareTip}
+      <div class="minor">${x.act || x.dev ? `<button class="link" data-p="hide">Don't show this again</button>` : ""}<button class="link" data-p="close" style="margin-left:auto">Close</button></div>`);
+    PK.idea = x;
+  }
+  $("#sheetCard").onclick = pkClick;
+}
+function pkClick(e){
+  const b = e.target.closest("[data-p]"); if (!b) return;
+  const a = b.dataset.p;
+  if (a === "back") return openPicker();
+  if (a === "close") return closeSheet();
+  if (a === "again") return pkNext();
+  if (a === "open") return openItem(b.dataset.id || PK.cur);
+  if (a === "clear") { PK.f = {}; pkRefill(); return pkNext(); }
+  if (a === "f") {
+    const k = b.dataset.k, v = b.dataset.v;
+    if (k === "can") PK.f.can = !PK.f.can; else PK.f[k] = v;
+    PK.cur = null; pkRefill(); return pkNext();
+  }
+  if (a === "addone") return editItem(PK.kind === "game" ? { department: "Video Games", kind: "tool" } : { department: "Movies & Music", category: PK.kind === "music" ? "Vinyl Records" : "Blu-ray & 4K Discs", kind: "tool" }, true);
+  if (a === "go") {
+    const it = S.items[PK.cur]; if (!it) return;
+    putItem({ ...it, picked: today() }); closeSheet();
+    return toast(`Enjoy ${it.name}! It sits out of the picks for two weeks.`);
+  }
+  if (a === "act" && PK.idea && PK.idea.act) return PK.idea.act.run();
+  if (a === "hide" && PK.idea) { pkHidden.push(PK.idea.key); try { localStorage.setItem("techstock.ideas.hidden", JSON.stringify(pkHidden)); } catch(err){} PK.queue = PK.queue.filter(q => q.key !== PK.idea.key); return pkNext(); }
+  if (a === "unhide") { pkHidden = []; try { localStorage.removeItem("techstock.ideas.hidden"); } catch(err){} pkRefill(); return pkNext(); }
+  if (a === "spares") return pkMarkSpare();
+}
+/* Tick what's sitting unused: those are marked as spare, and get project ideas. */
+function pkMarkSpare(){
+  const devs = Object.values(S.items).filter(d => isDevice(d) && (d.status === "available" || d.status === "spare")).sort((a, b) => (b.status === "spare") - (a.status === "spare") || a.department.localeCompare(b.department) || a.name.localeCompare(b.name));
+  openSheet(`<h2>What's not being used?</h2>
+    <p class="lede" style="margin-bottom:10px">Tick anything that's sitting unused: an old PC, a router in a drawer, a tablet nobody touches. It's marked as a spare, and project ideas for it show up in the picker.</p>
+    <input type="search" id="sp-q" placeholder="Find a device" aria-label="Find a device">
+    <div id="sp-list" style="margin-top:8px;max-height:46vh;overflow:auto">${devs.map(d => `<label class="li" data-n="${esc(searchText(d))}" style="cursor:pointer"><input type="checkbox" value="${esc(d.id)}" ${d.status === "spare" ? "checked" : ""}><div class="main"><div class="name">${esc(d.name)}</div><div class="meta"><span>${esc(d.category)}</span>${pkWhere(d) ? `<span>${esc(pkWhere(d))}</span>` : ""}</div></div></label>`).join("") || `<p class="hint">No devices yet. Add your gear first.</p>`}</div>
+    <div class="row end" style="margin-top:14px"><button class="btn ghost" id="sp-c">Back</button><button class="btn" id="sp-s">Save</button></div>`);
+  $("#sheetCard").onclick = null;
+  $("#sp-q").oninput = () => { const q = $("#sp-q").value.trim().toLowerCase(); $("#sp-list").querySelectorAll("[data-n]").forEach(r => r.hidden = !!q && !q.split(/\s+/).every(w => r.dataset.n.includes(w))); };
+  $("#sp-c").onclick = () => pkStart("project");
+  $("#sp-s").onclick = () => {
+    let n = 0;
+    $("#sp-list").querySelectorAll("input[type=checkbox]").forEach(cb => { const it = S.items[cb.value], want = cb.checked ? "spare" : "available"; if (it && it.status !== want) { S.items[it.id] = { ...it, status: want }; n++; } });
+    if (n) { saveAll(); renderAll(); }
+    pkStart("project");
+    if (n) toast(`${plural(n, "device")} updated`);
+  };
+}
+$("#pickBtn").onclick = openPicker;
 
 /* ---------- labels (QR) ---------- */
 const QR_SRC = "https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js";

@@ -13,6 +13,7 @@ Live: https://mcgillpreston-glitch.github.io/tech/
 - **Warranties**: shown on each device, flagged 30 days out, listed on the Network tab.
 - **Places and rooms**: rack, TV stand, desk, shelves and bins in each room, with printable QR asset tags (Avery 5160/5163 or plain paper).
 - **Floor plan**: Rooms → Arrange → Configure layout draws your home from above, floor by floor: rooms (rectangles, L-shapes, hallways or any polygon), building outlines and outdoor areas. Rooms lock together at corners and walls like puzzle pieces, walls and corners can be dragged, and each wall's length can be typed in feet and inches. Tap a room on the plan to go into it and see its places and things. The plan syncs like everything else (`shapes`).
+- **Pick for me**: a button on the Tech tab asks what you're trying to do. Watch a movie, play a game or listen to music picks a random title you own that's home and playable, with its picture, where it is and what to play it on. Start a project suggests ideas for gear marked as spare (home server, ad blocker, access point, wall panel…), ways to get more from gear in use, and loose ends in your records.
 - **Supplies** (batteries, cables, ink) with low levels feed the shopping list.
 - **Insurance list**: Settings → Download insurance list (CSV) with brand, model, serial, price, date, store and warranty.
 - **Private sync** through the same Cloudflare storage as the other apps (`/data/tech`). A new device unlocks once with the household key or the invite link from Settings.
